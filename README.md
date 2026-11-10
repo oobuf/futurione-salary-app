@@ -1,0 +1,1 @@
+# futurione-salary-app
