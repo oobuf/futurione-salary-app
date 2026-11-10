@@ -1,0 +1,2974 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Futurione Salary OS — Калькулятор, Журнал и Планировщик</title>
+  
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            futu: {
+              bg: '#070b14',
+              surface: '#0d1527',
+              card: '#131f38',
+              cardHover: '#182746',
+              border: '#1f2e4d',
+              borderLight: '#2b3f68',
+              cyan: '#00f2fe',
+              emerald: '#10b981',
+              purple: '#8b5cf6',
+              amber: '#f59e0b',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070b14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f2e4d;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+
+    /* Glows */
+    .glow-cyan {
+      box-shadow: 0 0 25px -4px rgba(0, 242, 254, 0.25);
+    }
+    .glow-emerald {
+      box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.3);
+    }
+    .glow-purple {
+      box-shadow: 0 0 25px -4px rgba(139, 92, 246, 0.25);
+    }
+
+    /* Tabs */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+      animation: tabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes tabFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hide spin buttons */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="bg-futu-bg text-slate-100 min-h-screen flex flex-col font-sans selection:bg-futu-cyan selection:text-slate-900">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="sticky top-0 z-40 bg-futu-surface/90 backdrop-blur-md border-b border-futu-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo & Branding -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 ring-1 ring-white/20">
+            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-display font-extrabold tracking-wider text-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">FUTURIONE</span>
+              <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-cyan-950/90 text-cyan-300 border border-cyan-800/60">Salary OS</span>
+              <span id="tgUserStatusBadge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-blue-950/80 text-blue-300 border border-blue-700/60 font-semibold items-center gap-1">✈️ TG</span>
+            </div>
+            <p class="text-xs text-slate-400 hidden sm:block">Промоутеры & Медиаторы • Расчет, Заметки и Планирование целей</p>
+          </div>
+        </div>
+
+        <!-- Quick Summary & Profile Switcher -->
+        <div class="flex items-center gap-3">
+          <div class="hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-futu-card border border-futu-border text-xs">
+            <span class="text-slate-400">Сегодня:</span>
+            <span id="headerTodaySum" class="font-bold text-cyan-400">0 ₽</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-slate-400">В этом месяце:</span>
+            <span id="headerMonthSum" class="font-bold text-emerald-400">0 ₽</span>
+          </div>
+
+          <!-- Active Profile Selector -->
+          <div class="relative">
+            <select id="globalColleagueSelect" onchange="handleGlobalColleagueChange(this.value)" class="appearance-none bg-futu-card hover:bg-futu-cardHover text-cyan-300 text-xs sm:text-sm font-semibold rounded-xl pl-3 pr-8 py-2 border border-futu-border focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer shadow-sm transition">
+              <!-- Dynamically populated -->
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-cyan-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-futu-bg/80 border-t border-futu-border/80 px-2 sm:px-6">
+      <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto max-w-7xl mx-auto py-2 no-scrollbar">
+        <button onclick="switchTab('calc')" id="tabBtn-calc" class="tab-btn active px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+          <span>Калькулятор смены</span>
+        </button>
+        <button onclick="switchTab('journal')" id="tabBtn-journal" class="tab-btn px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+          <span>Журнал и Заметки</span>
+          <span id="journalCountBadge" class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-300 font-bold">0</span>
+        </button>
+        <button onclick="switchTab('planner')" id="tabBtn-planner" class="tab-btn px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+          <span>Цель (15 / 30 дней)</span>
+        </button>
+        <button onclick="switchTab('team')" id="tabBtn-team" class="tab-btn px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap text-slate-400 hover:text-slate-200 hover:bg-slate-800/40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          <span>Команда</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ================= MAIN VIEW CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- =========================================================================
+         TAB 1: CALCULATOR & NEW SHIFT
+         ========================================================================= -->
+    <div id="tab-calc" class="tab-content active space-y-6">
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Form Controls -->
+        <div class="lg:col-span-7 space-y-5">
+          
+          <!-- Role Selector -->
+          <div class="bg-futu-card p-4 sm:p-5 rounded-3xl border border-futu-border shadow-lg">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Роль в смене</span>
+              <span class="text-xs text-slate-500">Futurione Tariffs</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Promoter Button -->
+              <button type="button" onclick="setRole('promoter')" id="roleBtn-promoter" class="p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500 shadow-md ring-1 ring-cyan-500/40">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-display font-bold text-base text-cyan-300">Промоутер</span>
+                  <span class="text-2xl">🚀</span>
+                </div>
+                <div class="text-[11px] text-slate-300 space-y-0.5">
+                  <p>• Ставка: <strong class="text-white">360 ₽/ч</strong></p>
+                  <p>• 1–20 чел: <strong class="text-emerald-400">100 ₽/чел</strong> (за 20 = 2000 ₽)</p>
+                  <p>• с 21-го чел: <strong class="text-amber-400">150 ₽/чел</strong></p>
+                  <p class="text-amber-300 font-semibold pt-1">★ План по людям: ×1.3</p>
+                </div>
+              </button>
+
+              <!-- Mediator Button -->
+              <button type="button" onclick="setRole('mediator')" id="roleBtn-mediator" class="p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-futu-surface border-futu-border hover:border-slate-700 opacity-70">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="font-display font-bold text-base text-slate-200">Медиатор</span>
+                  <span class="text-2xl">🎙️</span>
+                </div>
+                <div class="text-[11px] text-slate-300 space-y-0.5">
+                  <p>• Будни: <strong class="text-emerald-400">377 ₽/ч</strong></p>
+                  <p>• Выходные: <strong class="text-amber-400">403 ₽/ч</strong></p>
+                  <p>• Отзывы гостей: <strong class="text-cyan-300">100 ₽/отзыв</strong></p>
+                  <p class="text-slate-400 pt-1">До 100 отзывов за смену</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Shift Main Parameters Card -->
+          <div class="bg-futu-card p-4 sm:p-6 rounded-3xl border border-futu-border shadow-lg space-y-5">
+            
+            <!-- Date & Colleague Selection -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Дата смены</label>
+                <input type="date" id="shiftDate" onchange="handleDateChange()" class="w-full bg-futu-surface text-slate-100 rounded-xl px-3.5 py-2.5 border border-futu-border focus:border-cyan-500 focus:outline-none text-sm transition">
+                <div id="dateDayOfWeekBadge" class="mt-1.5 flex items-center gap-1.5 text-xs text-cyan-400 font-medium"></div>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Сотрудник</label>
+                  <button type="button" onclick="openAddColleagueModal()" class="text-xs text-cyan-400 hover:text-cyan-300 font-semibold">+ Новый</button>
+                </div>
+                <select id="shiftColleague" onchange="handleFormColleagueChange(this.value)" class="w-full bg-futu-surface text-slate-100 rounded-xl px-3.5 py-2.5 border border-futu-border focus:border-cyan-500 focus:outline-none text-sm transition"></select>
+                <p class="mt-1 text-xs text-slate-500">Запись будет сохранена в профиль</p>
+              </div>
+            </div>
+
+            <!-- Shift Hours -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Отработано часов</label>
+                <span id="hoursDisplayBadge" class="text-sm font-bold text-cyan-300 bg-cyan-950/80 px-2.5 py-0.5 rounded-lg border border-cyan-800/50">8 ч</span>
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1">
+                <button type="button" onclick="setHours(4)" class="px-3 py-1 text-xs rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300">4ч</button>
+                <button type="button" onclick="setHours(6)" class="px-3 py-1 text-xs rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300">6ч</button>
+                <button type="button" onclick="setHours(8)" class="px-3 py-1 text-xs rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-700/60 font-semibold">8ч (норма)</button>
+                <button type="button" onclick="setHours(10)" class="px-3 py-1 text-xs rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300">10ч</button>
+                <button type="button" onclick="setHours(12)" class="px-3 py-1 text-xs rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300">12ч</button>
+              </div>
+
+              <!-- Stepper input -->
+              <div class="flex items-center gap-3">
+                <button type="button" onclick="adjustValue('shiftHours', -0.5, 0.5, 24)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">−</button>
+                <input type="number" id="shiftHours" value="8" step="0.5" min="0.5" max="24" oninput="recalcShift()" class="flex-1 bg-futu-surface text-center font-display font-bold text-xl text-slate-100 rounded-xl py-2 border border-futu-border focus:border-cyan-500 focus:outline-none">
+                <button type="button" onclick="adjustValue('shiftHours', 0.5, 0.5, 24)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">+</button>
+              </div>
+            </div>
+
+            <!-- PROMOTER SPECIFIC CONTROLS -->
+            <div id="promoterFields" class="space-y-4 pt-3 border-t border-futu-border">
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <div>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Приведено гостей (человек)</label>
+                    <p class="text-[11px] text-slate-500">1–20 чел: 100 ₽/чел • с 21-го: 150 ₽/чел</p>
+                  </div>
+                  <span id="guestsSummaryBadge" class="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60">+0 ₽</span>
+                </div>
+
+                <!-- Quick guest chips -->
+                <div class="flex flex-wrap gap-1.5 mb-2.5">
+                  <button type="button" onclick="setGuests(0)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400">0</button>
+                  <button type="button" onclick="setGuests(10)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">10 (1000 ₽)</button>
+                  <button type="button" onclick="setGuests(15)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">15 (1500 ₽)</button>
+                  <button type="button" onclick="setGuests(20)" class="px-2.5 py-1 text-xs rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800 font-semibold">20 (2000 ₽)</button>
+                  <button type="button" onclick="setGuests(25)" class="px-2.5 py-1 text-xs rounded-lg bg-amber-950 text-amber-300 border border-amber-800 font-semibold">25 (2750 ₽) 🔥</button>
+                  <button type="button" onclick="adjustValue('shiftGuests', 1, 0, 200)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">+1</button>
+                  <button type="button" onclick="adjustValue('shiftGuests', 5, 0, 200)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200">+5</button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <button type="button" onclick="adjustValue('shiftGuests', -1, 0, 200)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">−</button>
+                  <input type="number" id="shiftGuests" value="15" min="0" max="200" oninput="recalcShift()" class="flex-1 bg-futu-surface text-center font-display font-bold text-xl text-slate-100 rounded-xl py-2 border border-futu-border focus:border-cyan-500 focus:outline-none">
+                  <button type="button" onclick="adjustValue('shiftGuests', 1, 0, 200)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">+</button>
+                </div>
+              </div>
+
+              <!-- Daily Plan Toggle (Multiplier x1.3) -->
+              <div class="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-purple-950/20 to-slate-900 border border-amber-500/40">
+                <label class="flex items-start gap-3.5 cursor-pointer select-none">
+                  <div class="flex items-center h-6">
+                    <input type="checkbox" id="shiftPlanCompleted" onchange="recalcShift()" class="w-5 h-5 rounded text-amber-500 bg-slate-900 border-amber-500 focus:ring-amber-500 cursor-pointer">
+                  </div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="font-display font-bold text-sm text-amber-300">Выполнен ежедневный план по людям</span>
+                      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">×1.3</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">Вся сумма смены (часы + оплата за гостей) умножается на коэффициент 1.3</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- MEDIATOR SPECIFIC CONTROLS -->
+            <div id="mediatorFields" class="space-y-4 pt-3 border-t border-futu-border hidden">
+              
+              <!-- Weekend rate toggle -->
+              <div class="p-3.5 rounded-2xl bg-futu-surface border border-futu-border flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 block">Тариф медиатора за смену</span>
+                  <span id="mediatorTariffLabel" class="text-sm font-bold text-cyan-300">Будни — 377 ₽/час</span>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                  <input type="checkbox" id="mediatorCustomWeekend" onchange="recalcShift()" class="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0">
+                  <span>Выходной (403 ₽)</span>
+                </label>
+              </div>
+
+              <!-- Reviews collected (0 to 100 max) -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <div>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Собранные отзывы гостей (0–100 шт)</label>
+                    <p class="text-[11px] text-slate-500">100 ₽ за каждый подтвержденный отзыв</p>
+                  </div>
+                  <span id="reviewsSummaryBadge" class="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60">+0 ₽</span>
+                </div>
+
+                <!-- Quick review chips -->
+                <div class="flex flex-wrap gap-1.5 mb-2.5">
+                  <button type="button" onclick="setReviews(0)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400">0</button>
+                  <button type="button" onclick="setReviews(5)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">5 шт (500 ₽)</button>
+                  <button type="button" onclick="setReviews(10)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">10 шт (1 000 ₽)</button>
+                  <button type="button" onclick="setReviews(20)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">20 шт (2 000 ₽)</button>
+                  <button type="button" onclick="setReviews(30)" class="px-2.5 py-1 text-xs rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800">30 шт</button>
+                  <button type="button" onclick="setReviews(50)" class="px-2.5 py-1 text-xs rounded-lg bg-purple-950 text-purple-300 border border-purple-800">50 шт 🔥</button>
+                  <button type="button" onclick="setReviews(100)" class="px-2.5 py-1 text-xs rounded-lg bg-amber-950 text-amber-300 border border-amber-800 font-bold">100 шт (MAX)</button>
+                </div>
+
+                <!-- Slider & Direct Input -->
+                <div class="space-y-2">
+                  <div class="flex items-center gap-3">
+                    <button type="button" onclick="adjustValue('shiftReviews', -1, 0, 100)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">−</button>
+                    <input type="number" id="shiftReviews" value="8" min="0" max="100" oninput="syncReviewsSliderFromInput()" class="flex-1 bg-futu-surface text-center font-display font-bold text-xl text-slate-100 rounded-xl py-2 border border-futu-border focus:border-cyan-500 focus:outline-none">
+                    <button type="button" onclick="adjustValue('shiftReviews', 1, 0, 100)" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex items-center justify-center font-bold text-xl transition">+</button>
+                  </div>
+                  <input type="range" id="shiftReviewsSlider" min="0" max="100" step="1" value="8" oninput="syncReviewsInputFromSlider()" class="w-full accent-cyan-400 cursor-pointer">
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ADDITIONAL INCOME BLOCK -->
+            <div class="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/30 via-slate-900 to-futu-surface border border-indigo-500/30 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">🎁</span>
+                  <label class="text-xs font-semibold uppercase tracking-wider text-indigo-300">Дополнительный доход за день</label>
+                </div>
+                <span id="extraIncomeBadge" class="text-xs font-bold text-indigo-300 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800/60">+0 ₽</span>
+              </div>
+
+              <!-- Quick chips for extra income -->
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="setExtraIncome(0)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400">0 ₽</button>
+                <button type="button" onclick="setExtraIncome(200)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">+200 ₽</button>
+                <button type="button" onclick="setExtraIncome(500)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">+500 ₽</button>
+                <button type="button" onclick="setExtraIncome(1000)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">+1 000 ₽</button>
+                <button type="button" onclick="setExtraIncome(2000)" class="px-2.5 py-1 text-xs rounded-lg bg-indigo-950 text-indigo-300 border border-indigo-800 font-semibold">+2 000 ₽ 🔥</button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Сумма доплаты (₽)</label>
+                  <input type="number" id="shiftExtraIncome" value="0" min="0" step="50" oninput="recalcShift()" class="w-full bg-futu-surface text-slate-100 rounded-xl px-3 py-2 border border-futu-border focus:border-indigo-400 focus:outline-none text-sm font-semibold">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">За что начислено (описание)</label>
+                  <input type="text" id="shiftExtraIncomeComment" placeholder="например: чай, премия, спецзадача" class="w-full bg-futu-surface text-slate-200 text-sm rounded-xl px-3 py-2 border border-futu-border focus:border-indigo-400 focus:outline-none transition">
+                </div>
+              </div>
+            </div>
+
+            <!-- Shift Note -->
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Заметка к смене / локация (необязательно)</label>
+              <input type="text" id="shiftComment" placeholder="например: ТРЦ Авиапарк, центральный вход, высокая проходимость" class="w-full bg-futu-surface text-slate-200 text-sm rounded-xl px-3.5 py-2.5 border border-futu-border focus:border-cyan-500 focus:outline-none transition">
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Right: Real-time Live Calculation Card -->
+        <div class="lg:col-span-5 space-y-5 lg:sticky lg:top-24">
+
+          <div class="bg-gradient-to-b from-futu-card via-futu-card to-[#0b1324] p-5 sm:p-7 rounded-3xl border border-cyan-500/30 shadow-2xl relative overflow-hidden glow-cyan">
+            
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center justify-between pb-4 border-b border-futu-border">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs uppercase font-bold tracking-wider text-slate-400">Детализация расчета</span>
+              </div>
+              <span id="calcRoleBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Промоутер</span>
+            </div>
+
+            <!-- Breakdown -->
+            <div class="py-5 space-y-3.5 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400" id="calcHoursLabel">Часовая ставка (8ч × 360 ₽):</span>
+                <span id="calcHoursSum" class="font-semibold text-slate-200">2 880 ₽</span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400" id="calcMetricLabel">Гости (15 чел):</span>
+                <span id="calcMetricSum" class="font-semibold text-slate-200">1 500 ₽</span>
+              </div>
+
+              <!-- Tier Breakdown Details -->
+              <div id="calcTierDetailRow" class="text-[11px] text-cyan-400 pl-2 hidden"></div>
+
+              <!-- Subtotal before multiplier if plan is active -->
+              <div id="calcSubtotalRow" class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800 hidden">
+                <span>Базовая сумма (часы + люди):</span>
+                <span id="calcSubtotalSum" class="font-medium text-slate-300">4 380 ₽</span>
+              </div>
+
+              <!-- Plan Bonus row -->
+              <div id="calcBonusRow" class="flex items-center justify-between text-amber-300 pt-1 border-t border-dashed border-slate-800 hidden">
+                <span class="flex items-center gap-1.5 font-medium">
+                  <span>★</span> Бонус за план (×1.3):
+                </span>
+                <span id="calcBonusSum" class="font-bold">+1 314 ₽</span>
+              </div>
+
+              <!-- Extra income row -->
+              <div id="calcExtraIncomeRow" class="flex items-center justify-between text-indigo-300 pt-1 border-t border-dashed border-indigo-900/60 hidden">
+                <span class="flex items-center gap-1.5 font-medium">
+                  <span>🎁</span> Дополнительный доход:
+                </span>
+                <span id="calcExtraIncomeSum" class="font-bold">+0 ₽</span>
+              </div>
+            </div>
+
+            <!-- Grand Total -->
+            <div class="pt-4 border-t border-futu-border text-center">
+              <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold block mb-1">Итого начислено за смену</span>
+              <div class="flex items-baseline justify-center gap-1">
+                <span id="calcTotalSum" class="font-display font-black text-4xl sm:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">0 ₽</span>
+              </div>
+              <p id="calcRatePerHourSub" class="text-xs text-slate-400 mt-1.5">~0 ₽ / час со всеми бонусами и доплатами</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-6 space-y-2.5">
+              <button type="button" onclick="saveShift()" class="w-full py-3.5 px-4 rounded-2xl font-display font-bold text-base text-slate-950 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                <span>Записать смену в журнал</span>
+              </button>
+
+              <button type="button" id="tgSendDataBtn" onclick="sendCurrentShiftToBot()" class="hidden w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:opacity-90 border border-cyan-400/40 transition flex items-center justify-center gap-2 shadow-md shadow-cyan-950/50 active:scale-[0.98]">
+                <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/></svg>
+                <span>Отправить смену боту в чат</span>
+              </button>
+
+              <button type="button" onclick="copyCurrentShiftReport()" class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-futu-surface hover:bg-slate-800 border border-futu-border transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                <span>Скопировать отчет для Telegram</span>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Formula Info Card -->
+          <div class="bg-futu-card/70 p-4 rounded-2xl border border-futu-border text-xs text-slate-400 flex items-start gap-3">
+            <span class="text-lg text-cyan-400">💡</span>
+            <div>
+              <p class="font-semibold text-slate-300 mb-0.5">Правила тарифов Futurione:</p>
+              <p>• Промоутер: 360 ₽/ч, 1–20 чел: 100 ₽/чел (за 20 чел = 2 000 ₽), с 21-го: 150 ₽/чел, план ×1.3.<br>
+                 • Медиатор: будни 377 ₽/ч, вых. 403 ₽/ч + 100 ₽ за каждый отзыв (до 100 шт).<br>
+                 • Дополнительные доходы суммируются с общей зарплатой за день.</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =========================================================================
+         TAB 2: JOURNAL & DETAILED STATS
+         ========================================================================= -->
+    <div id="tab-journal" class="tab-content space-y-6">
+
+      <!-- Stats Overview Header -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        
+        <div class="bg-futu-card p-4 rounded-2xl border border-futu-border">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Заработано всего</span>
+          <div id="statTotalMoney" class="font-display font-extrabold text-2xl sm:text-3xl text-emerald-400">0 ₽</div>
+          <span id="statMoneyTrend" class="text-[11px] text-slate-500 mt-1 block">по выбранным фильтрам</span>
+        </div>
+
+        <div class="bg-futu-card p-4 rounded-2xl border border-futu-border">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Отработано часов</span>
+          <div id="statTotalHours" class="font-display font-extrabold text-2xl sm:text-3xl text-cyan-400">0 ч</div>
+          <span id="statAvgHourlyRate" class="text-[11px] text-slate-400 mt-1 block">Ставка: ~0 ₽/ч</span>
+        </div>
+
+        <div class="bg-futu-card p-4 rounded-2xl border border-futu-border">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Всего смен</span>
+          <div id="statTotalShifts" class="font-display font-extrabold text-2xl sm:text-3xl text-purple-400">0</div>
+          <span id="statAvgPerShift" class="text-[11px] text-slate-400 mt-1 block">Ср. смена: ~0 ₽</span>
+        </div>
+
+        <div class="bg-futu-card p-4 rounded-2xl border border-futu-border">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Доп. доходы</span>
+          <div id="statTotalExtra" class="font-display font-extrabold text-2xl sm:text-3xl text-indigo-300">0 ₽</div>
+          <span class="text-[11px] text-slate-400 mt-1 block">премии, чай и бонусы</span>
+        </div>
+
+        <div class="col-span-2 lg:col-span-1 bg-futu-card p-4 rounded-2xl border border-futu-border">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Люди / Отзывы</span>
+          <div id="statKeyMetric" class="font-display font-extrabold text-xl sm:text-2xl text-cyan-300">0 / 0</div>
+          <span class="text-[11px] text-amber-400/90 mt-1 block" id="statPlanSummaryBadge">0 планов (×1.3)</span>
+        </div>
+
+      </div>
+
+      <!-- Filters & Action Bar -->
+      <div class="bg-futu-card p-4 sm:p-5 rounded-2xl border border-futu-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Сотрудник</label>
+            <select id="filterColleague" onchange="renderJournal()" class="bg-futu-surface text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2 border border-futu-border focus:outline-none focus:border-cyan-500">
+              <option value="all">Все сотрудники</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Месяц</label>
+            <select id="filterMonth" onchange="renderJournal()" class="bg-futu-surface text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2 border border-futu-border focus:outline-none focus:border-cyan-500">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Роль</label>
+            <select id="filterRole" onchange="renderJournal()" class="bg-futu-surface text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2 border border-futu-border focus:outline-none focus:border-cyan-500">
+              <option value="all">Все роли</option>
+              <option value="promoter">Промоутеры</option>
+              <option value="mediator">Медиаторы</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Export & Tools -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="copyMonthTelegramSummary()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 transition flex items-center gap-1.5" title="Сгенерировать сводный отчет за месяц для Telegram">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            <span>Отчет в Telegram</span>
+          </button>
+
+          <button type="button" onclick="exportDataCSV()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5" title="Скачать таблицу в CSV (Excel)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <span>CSV (Excel)</span>
+          </button>
+
+          <button type="button" onclick="exportDataJSON()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5" title="Скачать бэкап в JSON">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>JSON</span>
+          </button>
+
+          <label class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5 cursor-pointer" title="Загрузить сохраненный файл бэкапа">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"></path></svg>
+            <span>Импорт</span>
+            <input type="file" id="importFileInput" accept=".json" onchange="importDataJSON(event)" class="hidden">
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Shift Entries Feed -->
+      <div id="journalShiftsList" class="space-y-3"></div>
+
+      <!-- Empty state container -->
+      <div id="journalEmptyState" class="hidden text-center py-14 px-4 rounded-3xl bg-futu-card/40 border border-dashed border-futu-border">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800/80 flex items-center justify-center mx-auto mb-4 text-3xl">📝</div>
+        <h3 class="font-display font-bold text-lg text-slate-200">Смен за этот период пока нет</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto mt-1 mb-5">Заполните параметры на вкладке «Калькулятор смены» и нажмите «Записать смену в журнал».</p>
+        <button onclick="switchTab('calc')" class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition">Добавить первую смену</button>
+      </div>
+
+    </div>
+
+    <!-- =========================================================================
+         TAB 3: 15 / 30 DAY TARGET PLANNER WITH PER-SHIFT CUSTOMIZATION
+         ========================================================================= -->
+    <div id="tab-planner" class="tab-content space-y-6">
+
+      <!-- Planner Intro Header -->
+      <div class="bg-gradient-to-r from-futu-card via-slate-900 to-futu-card p-5 sm:p-7 rounded-3xl border border-cyan-500/20 shadow-xl">
+        <div class="max-w-4xl">
+          <div class="flex items-center gap-2 text-cyan-400 text-xs uppercase font-bold tracking-wider mb-2">
+            <span>🎯 Финансовый планировщик смен</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px]">Кастомизация каждой смены</span>
+          </div>
+          <h2 class="font-display font-black text-2xl sm:text-3xl text-white">Сколько вы хотите заработать в Futurione?</h2>
+          <p class="text-sm text-slate-300 mt-2">
+            Задайте цель на 15 или 30 дней. Вы можете <strong>настраивать каждую смену индивидуально</strong>: менять часы, отзывы (до 100 шт!), количество людей, план и доп. доход для любого конкретного дня.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Planner Parameters Form -->
+        <div class="lg:col-span-5 bg-futu-card p-5 sm:p-6 rounded-3xl border border-futu-border space-y-5">
+          <h3 class="font-display font-bold text-base text-slate-200 flex items-center justify-between">
+            <span class="flex items-center gap-2"><span>⚙️</span> Базовые параметры цели</span>
+            <button type="button" onclick="applyTemplateToAllWorkdays()" class="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold underline">Применить ко всем</button>
+          </h3>
+
+          <!-- Target Amount -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Желаемый доход (₽)</label>
+            <div class="relative">
+              <input type="number" id="planTargetMoney" value="60000" step="5000" min="5000" max="500000" oninput="calculatePlan()" class="w-full bg-futu-surface text-emerald-400 font-display font-bold text-2xl rounded-2xl px-4 py-3 border border-futu-border focus:border-cyan-500 focus:outline-none">
+              <span class="absolute right-4 top-3.5 text-slate-500 font-bold">₽</span>
+            </div>
+
+            <!-- Quick target presets -->
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <button type="button" onclick="setPlanTarget(40000)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">40 000 ₽</button>
+              <button type="button" onclick="setPlanTarget(60000)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">60 000 ₽</button>
+              <button type="button" onclick="setPlanTarget(80000)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">80 000 ₽</button>
+              <button type="button" onclick="setPlanTarget(120000)" class="px-2.5 py-1 text-xs rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-800 font-semibold">120 000 ₽ 🔥</button>
+            </div>
+          </div>
+
+          <!-- Target Horizon (15 or 30 days) -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Период планирования</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button type="button" onclick="setPlanDays(15)" id="planDaysBtn-15" class="py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-futu-surface border-futu-border text-slate-300 hover:border-slate-600">
+                15 дней (Полмесяца)
+              </button>
+              <button type="button" onclick="setPlanDays(30)" id="planDaysBtn-30" class="py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-cyan-950/70 border-cyan-500 text-cyan-300 ring-1 ring-cyan-500/30">
+                30 дней (Месяц)
+              </button>
+            </div>
+          </div>
+
+          <!-- Default Role for New Workdays -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Базовый шаблон для новых смен</label>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <button type="button" onclick="setPlanRole('promoter')" id="planRoleBtn-promoter" class="py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-cyan-950 border-cyan-500 text-cyan-300">
+                Промоутер (360 ₽/ч)
+              </button>
+              <button type="button" onclick="setPlanRole('mediator')" id="planRoleBtn-mediator" class="py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-futu-surface border-futu-border text-slate-300">
+                Медиатор (377/403 ₽/ч)
+              </button>
+            </div>
+
+            <!-- Default Shift parameters -->
+            <div class="p-4 rounded-2xl bg-futu-surface border border-futu-border space-y-4 text-xs">
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="text-slate-400">Часов в смену по умолчанию:</span>
+                  <span id="planShiftHoursLabel" class="font-bold text-cyan-300">8 часов</span>
+                </div>
+                <input type="range" id="planShiftHours" min="4" max="14" step="1" value="8" oninput="handlePlannerTemplateChange()" class="w-full accent-cyan-400 cursor-pointer">
+              </div>
+
+              <div id="planPromoterMetrics">
+                <div class="flex justify-between mb-1">
+                  <span class="text-slate-400">Ожидаемо гостей за смену:</span>
+                  <span id="planGuestsLabel" class="font-bold text-emerald-400">18 чел</span>
+                </div>
+                <input type="range" id="planGuests" min="0" max="40" step="1" value="18" oninput="handlePlannerTemplateChange()" class="w-full accent-emerald-400 cursor-pointer">
+                
+                <label class="flex items-center gap-2 mt-2 text-amber-300 cursor-pointer select-none">
+                  <input type="checkbox" id="planAssumeBonus" checked onchange="handlePlannerTemplateChange()" class="rounded bg-slate-900 border-amber-600 text-amber-500 focus:ring-0">
+                  <span>Выполнение плана (множитель ×1.3)</span>
+                </label>
+              </div>
+
+              <div id="planMediatorMetrics" class="hidden">
+                <div class="flex justify-between mb-1">
+                  <span class="text-slate-400">Ожидаемо отзывов (0–100 шт):</span>
+                  <span id="planReviewsLabel" class="font-bold text-emerald-400">15 шт</span>
+                </div>
+                <input type="range" id="planReviews" min="0" max="100" step="1" value="15" oninput="handlePlannerTemplateChange()" class="w-full accent-emerald-400 cursor-pointer">
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Schedule Generators -->
+          <div class="space-y-2 pt-2 border-t border-futu-border">
+            <span class="text-xs font-semibold text-slate-400 block">Быстрые генераторы расписания:</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="autoDistributePlanShifts()" class="p-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 text-white text-[11px] font-bold transition shadow text-center">
+                ✨ Оптимально
+              </button>
+              <button type="button" onclick="generateSchedulePattern('2-2')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition text-center">
+                График 2/2
+              </button>
+              <button type="button" onclick="generateSchedulePattern('5-2')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition text-center">
+                Будни 5/2
+              </button>
+            </div>
+            <button type="button" onclick="clearPlanSchedule()" class="w-full py-1.5 rounded-lg text-slate-500 hover:text-rose-400 text-[11px] transition">Очистить все дни графика</button>
+          </div>
+
+        </div>
+
+        <!-- Planner Results & Interactive Calendar -->
+        <div class="lg:col-span-7 space-y-5">
+          
+          <!-- Strategy & Fact Progress Card -->
+          <div class="bg-futu-card p-5 sm:p-6 rounded-3xl border border-futu-border space-y-4">
+            
+            <div class="flex items-center justify-between border-b border-futu-border pb-3">
+              <span class="text-xs uppercase font-bold tracking-wider text-slate-400">Сводка достижения цели</span>
+              <span id="planEstimatedPerShift" class="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">~0 ₽ ср./смена</span>
+            </div>
+
+            <!-- Stats grid -->
+            <div class="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+              <div class="bg-futu-surface p-3 rounded-2xl border border-futu-border">
+                <span class="text-[10px] text-slate-400 block mb-0.5">Рабочих смен</span>
+                <div id="planShiftsCountStat" class="font-display font-extrabold text-xl sm:text-2xl text-cyan-300">0</div>
+                <span id="planPaceText" class="text-[10px] text-slate-500 block mt-0.5">из 30 дней</span>
+              </div>
+
+              <div class="bg-futu-surface p-3 rounded-2xl border border-futu-border">
+                <span class="text-[10px] text-slate-400 block mb-0.5">Всего часов</span>
+                <div id="planTotalHoursStat" class="font-display font-extrabold text-xl sm:text-2xl text-purple-300">0 ч</div>
+                <span id="planWeeklyHoursText" class="text-[10px] text-slate-500 block mt-0.5">~0 ч в нед.</span>
+              </div>
+
+              <div class="bg-futu-surface p-3 rounded-2xl border border-futu-border">
+                <span class="text-[10px] text-slate-400 block mb-0.5">Выходных</span>
+                <div id="planRestDaysStat" class="font-display font-extrabold text-xl sm:text-2xl text-emerald-300">0</div>
+                <span class="text-[10px] text-slate-500 block mt-0.5">свободных дней</span>
+              </div>
+            </div>
+
+            <!-- Bars: Plan vs Actual Fact -->
+            <div class="space-y-3 pt-2">
+              
+              <!-- Plan bar -->
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-300 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    Запланировано в графике: <strong id="planScheduledMoneySum" class="text-cyan-300">0 ₽</strong>
+                  </span>
+                  <span id="planProgressPercent" class="font-bold text-cyan-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-3 p-0.5 border border-futu-border overflow-hidden">
+                  <div id="planProgressBar" class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- Fact bar (from Journal) -->
+              <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-300 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    Фактически заработано (из журнала): <strong id="planActualFactMoney" class="text-emerald-400">0 ₽</strong>
+                  </span>
+                  <span id="planFactPercent" class="font-bold text-emerald-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-3 p-0.5 border border-futu-border overflow-hidden">
+                  <div id="planFactProgressBar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <div id="planGoalStatusMsg" class="pt-1 text-xs font-semibold text-slate-300"></div>
+            </div>
+
+          </div>
+
+          <!-- Interactive Calendar Grid -->
+          <div class="bg-futu-card p-5 sm:p-6 rounded-3xl border border-futu-border space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="font-display font-bold text-base text-slate-100 flex items-center gap-2">
+                  <span>🗓️ Сетка дней</span>
+                  <span class="text-xs text-cyan-400 font-normal">(кликните на день для настройки)</span>
+                </h3>
+                <p class="text-xs text-slate-400">Нажимайте на любой день, чтобы изменить часы, отзывы, людей и доп. доход</p>
+              </div>
+              <button type="button" onclick="copyScheduleText()" class="px-3 py-1.5 rounded-xl bg-futu-surface hover:bg-slate-800 text-slate-200 border border-futu-border text-xs font-semibold transition flex items-center gap-1.5 self-start sm:self-auto">
+                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                <span>Скопировать график</span>
+              </button>
+            </div>
+
+            <!-- Days Grid Matrix (15 or 30 days) -->
+            <div id="planDaysGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-2">
+              <!-- Dynamically populated -->
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =========================================================================
+         TAB 4: TEAM & COLLEAGUES
+         ========================================================================= -->
+    <div id="tab-team" class="tab-content space-y-6">
+      
+      <!-- Top Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-futu-card p-5 sm:p-6 rounded-3xl border border-futu-border">
+        <div>
+          <h2 class="font-display font-black text-2xl text-white">Команда Futurione</h2>
+          <p class="text-sm text-slate-400 mt-0.5">Ведите учет зарплат себе и вашим напарникам в единой базе.</p>
+        </div>
+        <button type="button" onclick="openAddColleagueModal()" class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 self-start sm:self-auto">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>Добавить коллегу</span>
+        </button>
+      </div>
+
+      <!-- Colleagues Grid -->
+      <div id="colleaguesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    </div>
+
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- DAY INSPECTOR / CUSTOMIZER MODAL FOR PLANNER -->
+  <div id="dayCustomizerModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-futu-card border border-cyan-500/30 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto glow-cyan">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-futu-border">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-cyan-400">Настройка смены в плане</span>
+          <h3 id="dayModalTitle" class="font-display font-black text-2xl text-white">День 1</h3>
+        </div>
+        <button type="button" onclick="closeDayModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="dayModalDayNum">
+
+      <div class="space-y-4 pt-4 text-sm">
+        
+        <!-- Status Switcher (Workday / Day Off) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Статус дня</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="dayModalStatusWork" onclick="setDayModalStatus(true)" class="py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-cyan-950 border-cyan-500 text-cyan-300">
+              ⚡ Рабочая смена
+            </button>
+            <button type="button" id="dayModalStatusRest" onclick="setDayModalStatus(false)" class="py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-futu-surface border-futu-border text-slate-400">
+              ☕ Выходной день
+            </button>
+          </div>
+        </div>
+
+        <div id="dayModalWorkdayFields" class="space-y-4">
+          
+          <!-- Role in this shift -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Роль на эту смену</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button type="button" id="dayModalRolePromoter" onclick="setDayModalRole('promoter')" class="py-2 px-3 rounded-xl border text-center text-xs font-bold transition">
+                Промоутер (360 ₽/ч)
+              </button>
+              <button type="button" id="dayModalRoleMediator" onclick="setDayModalRole('mediator')" class="py-2 px-3 rounded-xl border text-center text-xs font-bold transition">
+                Медиатор (377/403 ₽/ч)
+              </button>
+            </div>
+          </div>
+
+          <!-- Hours slider & input -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs text-slate-400 uppercase font-semibold">Часов в смену</label>
+              <span id="dayModalHoursBadge" class="text-xs font-bold text-cyan-300 px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800">8 ч</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="range" id="dayModalHoursSlider" min="2" max="14" step="0.5" value="8" oninput="syncDayModalHours()" class="flex-1 accent-cyan-400">
+              <input type="number" id="dayModalHoursInput" min="1" max="24" step="0.5" value="8" oninput="syncDayModalHoursFromInput()" class="w-16 bg-futu-surface text-center font-bold text-sm rounded-lg p-1.5 border border-futu-border">
+            </div>
+          </div>
+
+          <!-- Role Metrics -->
+          <div id="dayModalPromoterFields" class="space-y-3 p-3.5 rounded-2xl bg-futu-surface border border-futu-border">
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs text-slate-300 font-semibold">Приведено гостей (чел)</label>
+              <span id="dayModalGuestsBadge" class="text-xs font-bold text-emerald-400">18 чел</span>
+            </div>
+            <input type="range" id="dayModalGuestsSlider" min="0" max="50" step="1" value="18" oninput="syncDayModalGuests()" class="w-full accent-emerald-400">
+            
+            <label class="flex items-center gap-2 pt-1 text-xs text-amber-300 cursor-pointer select-none">
+              <input type="checkbox" id="dayModalPlanCheckbox" onchange="recalcDayModalEarnings()" class="rounded bg-slate-900 border-amber-600 text-amber-500">
+              <span>План по людям выполнен (множитель ×1.3)</span>
+            </label>
+          </div>
+
+          <div id="dayModalMediatorFields" class="space-y-3 p-3.5 rounded-2xl bg-futu-surface border border-futu-border hidden">
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs text-slate-300 font-semibold">Собрано отзывов (0–100 шт!)</label>
+              <span id="dayModalReviewsBadge" class="text-xs font-bold text-cyan-300">15 шт</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="range" id="dayModalReviewsSlider" min="0" max="100" step="1" value="15" oninput="syncDayModalReviews()" class="flex-1 accent-cyan-400">
+              <input type="number" id="dayModalReviewsInput" min="0" max="100" step="1" value="15" oninput="syncDayModalReviewsFromInput()" class="w-16 bg-futu-card text-center font-bold text-sm rounded-lg p-1.5 border border-futu-border">
+            </div>
+
+            <label class="flex items-center gap-2 pt-1 text-xs text-cyan-300 cursor-pointer select-none">
+              <input type="checkbox" id="dayModalWeekendCheckbox" onchange="recalcDayModalEarnings()" class="rounded bg-slate-900 border-cyan-600 text-cyan-500">
+              <span>Тариф выходного дня (403 ₽/ч вместо 377 ₽/ч)</span>
+            </label>
+          </div>
+
+          <!-- Extra Income for this day -->
+          <div class="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-semibold text-indigo-300">🎁 Дополнительный доход в этот день (₽)</label>
+              <span id="dayModalExtraBadge" class="text-xs font-bold text-indigo-300">+0 ₽</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" id="dayModalExtraInput" min="0" step="100" value="0" placeholder="0 ₽" oninput="recalcDayModalEarnings()" class="bg-futu-surface rounded-xl p-2 text-sm text-slate-100 border border-futu-border font-bold">
+              <input type="text" id="dayModalExtraComment" placeholder="За что (чай, премия)" class="bg-futu-surface rounded-xl p-2 text-xs text-slate-300 border border-futu-border">
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Calculated expected earning for this day -->
+        <div class="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-futu-surface border border-cyan-500/40 text-center">
+          <span class="text-xs text-slate-400 uppercase font-semibold block mb-0.5">Ожидаемый заработок за этот день:</span>
+          <span id="dayModalTotalResult" class="font-display font-black text-3xl text-emerald-400">0 ₽</span>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-futu-border">
+        <button type="button" onclick="copySettingsToAllDays()" class="text-xs text-slate-400 hover:text-cyan-300 transition underline">
+          Применить этот шаблон ко всем счетам
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeDayModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Закрыть</button>
+          <button type="button" onclick="saveDayModalChanges()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold uppercase tracking-wider transition">Сохранить день</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Add Colleague Modal -->
+  <div id="addColleagueModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-futu-card border border-futu-border w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
+      <h3 class="font-display font-bold text-xl text-white mb-4">Добавить коллегу в команду</h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Имя коллеги</label>
+          <input type="text" id="newColleagueName" placeholder="например: Даниил, Катя или Артур" class="w-full bg-futu-surface text-slate-100 rounded-xl px-3.5 py-2.5 border border-futu-border focus:border-cyan-500 focus:outline-none text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Основная роль</label>
+          <select id="newColleagueRole" class="w-full bg-futu-surface text-slate-100 rounded-xl px-3.5 py-2.5 border border-futu-border focus:border-cyan-500 focus:outline-none text-sm">
+            <option value="promoter">Промоутер (360 ₽/ч + люди)</option>
+            <option value="mediator">Медиатор (377/403 ₽/ч + отзывы)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeAddColleagueModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Отмена</button>
+        <button type="button" onclick="saveNewColleague()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold uppercase tracking-wider transition">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Shift Modal (For Journal) -->
+  <div id="editShiftModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-futu-card border border-futu-border w-full max-w-lg rounded-3xl p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+      <h3 class="font-display font-bold text-xl text-white mb-4">Редактирование смены</h3>
+      <input type="hidden" id="editShiftId">
+
+      <div class="space-y-4 text-sm">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Дата</label>
+            <input type="date" id="editDate" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Часы</label>
+            <input type="number" id="editHours" step="0.5" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Роль</label>
+          <select id="editRole" onchange="toggleEditRoleFields()" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+            <option value="promoter">Промоутер</option>
+            <option value="mediator">Медиатор</option>
+          </select>
+        </div>
+
+        <div id="editPromoterBlock" class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Приведенные гости (чел)</label>
+            <input type="number" id="editGuests" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300">
+            <input type="checkbox" id="editPlanCompleted" class="rounded bg-slate-900 border-amber-500 text-amber-500">
+            <span>Выполнен план по людям (множитель ×1.3)</span>
+          </label>
+        </div>
+
+        <div id="editMediatorBlock" class="space-y-3 hidden">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Собранные отзывы (до 100 шт)</label>
+            <input type="number" id="editReviews" min="0" max="100" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer text-xs text-cyan-300">
+            <input type="checkbox" id="editIsWeekend" class="rounded bg-slate-900 border-cyan-500 text-cyan-500">
+            <span>Тариф выходного дня (403 ₽/ч вместо 377 ₽/ч)</span>
+          </label>
+        </div>
+
+        <!-- Extra income in edit modal -->
+        <div class="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 space-y-2">
+          <label class="block text-xs font-semibold text-indigo-300">🎁 Дополнительный доход (₽)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="editExtraIncome" min="0" placeholder="0 ₽" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2 border border-futu-border text-sm font-semibold">
+            <input type="text" id="editExtraComment" placeholder="Описание доплаты" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2 border border-futu-border text-xs">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Заметка / Комментарий к смене</label>
+          <input type="text" id="editComment" class="w-full bg-futu-surface text-slate-100 rounded-xl p-2.5 border border-futu-border text-sm">
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-3 pt-3 border-t border-futu-border">
+        <button type="button" onclick="closeEditShiftModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Отмена</button>
+        <button type="button" onclick="commitShiftEdit()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold uppercase tracking-wider transition">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Action Modal -->
+  <div id="confirmModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-futu-card border border-futu-border w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+      </div>
+      <h3 id="confirmTitle" class="font-display font-bold text-lg text-white mb-2">Подтвердите действие</h3>
+      <p id="confirmMessage" class="text-xs text-slate-400 mb-6">Вы уверены?</p>
+      <div class="flex items-center justify-center gap-3">
+        <button type="button" id="confirmCancelBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Отмена</button>
+        <button type="button" id="confirmOkBtn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider transition">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full"></div>
+
+  <!-- ================= LOGIC SCRIPT ================= -->
+  <script>
+    /* =========================================================================
+       TELEGRAM WEB APP INTEGRATION (TMA SDK)
+       ========================================================================= */
+    const tg = window.Telegram?.WebApp;
+    const isTelegramApp = Boolean(tg && tg.initData);
+
+    function initTelegramApp() {
+      if (!tg) return;
+
+      try {
+        // Expand app to maximum viewport height
+        tg.ready();
+        if (typeof tg.expand === 'function') {
+          tg.expand();
+        }
+
+        // Apply dark cyber colors to Telegram header and surface
+        if (typeof tg.setHeaderColor === 'function') {
+          tg.setHeaderColor('#070b14');
+        }
+        if (typeof tg.setBackgroundColor === 'function') {
+          tg.setBackgroundColor('#070b14');
+        }
+
+        // Detect user name from Telegram initData
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+          const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Я';
+          const myProfile = defaultColleagues.find(c => c.id === 'me');
+          if (myProfile) {
+            myProfile.name = `${fullName} (Вы)`;
+          }
+
+          // Header badge
+          const badge = document.getElementById('tgUserStatusBadge');
+          if (badge) {
+            badge.textContent = `✈️ ${fullName}`;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+          }
+        }
+
+        // Show sendData button inside Telegram
+        const sendDataBtn = document.getElementById('tgSendDataBtn');
+        if (sendDataBtn) {
+          sendDataBtn.classList.remove('hidden');
+        }
+
+      } catch (err) {
+        console.warn('Telegram WebApp init warning:', err);
+      }
+    }
+
+    // Haptic feedback trigger with fallback
+    function triggerHaptic(type = 'light') {
+      if (!tg?.HapticFeedback) return;
+      try {
+        if (type === 'success' || type === 'error' || type === 'warning') {
+          tg.HapticFeedback.notificationOccurred(type);
+        } else if (type === 'selection') {
+          tg.HapticFeedback.selectionChanged();
+        } else {
+          tg.HapticFeedback.impactOccurred(type); // 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'
+        }
+      } catch (e) {}
+    }
+
+    /* =========================================================================
+       STORAGE KEYS & STATE
+       ========================================================================= */
+    const STORAGE_KEY_SHIFTS = 'futurione_shifts_db_v4';
+    const STORAGE_KEY_COLLEAGUES = 'futurione_colleagues_db_v4';
+    const STORAGE_KEY_ACTIVE = 'futurione_active_user_v4';
+    const STORAGE_KEY_PLANNER = 'futurione_planner_cfg_v4';
+
+    const defaultColleagues = [
+      { id: 'me', name: 'Я (Мой профиль)', defaultRole: 'promoter' },
+      { id: 'c1', name: 'Даниил', defaultRole: 'promoter' },
+      { id: 'c2', name: 'Алина', defaultRole: 'mediator' }
+    ];
+
+    let colleagues = [];
+    let shifts = [];
+    let currentRole = 'promoter';
+    let activeColleagueId = 'me';
+    let currentCalcResult = null;
+
+    // Planner state with per-shift customizations
+    let plannerState = {
+      targetMoney: 60000,
+      daysCount: 30, // 15 or 30
+      templateRole: 'promoter',
+      templateHours: 8,
+      templateGuests: 18,
+      templateAssumeBonus: true,
+      templateReviews: 15,
+      daysConfig: {}
+    };
+
+    /* =========================================================================
+       INITIALIZATION
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      initTelegramApp();
+      loadStorage();
+      initDateInputs();
+      populateColleagueDropdowns();
+      populateMonthFilter();
+      initPlannerDefaults();
+      recalcShift();
+      renderJournal();
+      renderColleagues();
+      updateHeaderSummary();
+    });
+
+    function loadStorage() {
+      try {
+        const storedC = localStorage.getItem(STORAGE_KEY_COLLEAGUES);
+        colleagues = storedC ? JSON.parse(storedC) : [...defaultColleagues];
+      } catch (e) {
+        colleagues = [...defaultColleagues];
+      }
+
+      // If opened in Telegram, update "me" entry with actual Telegram username
+      if (tg?.initDataUnsafe?.user) {
+        const user = tg.initDataUnsafe.user;
+        const tgName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username;
+        if (tgName) {
+          const myProfile = colleagues.find(c => c.id === 'me');
+          if (myProfile && (myProfile.name === 'Я (Мой профиль)' || myProfile.name === 'Я')) {
+            myProfile.name = `${tgName} (Вы)`;
+          }
+        }
+      }
+
+      try {
+        const storedS = localStorage.getItem(STORAGE_KEY_SHIFTS);
+        shifts = storedS ? JSON.parse(storedS) : [];
+      } catch (e) {
+        shifts = [];
+      }
+
+      const storedActive = localStorage.getItem(STORAGE_KEY_ACTIVE);
+      if (storedActive && colleagues.some(c => c.id === storedActive)) {
+        activeColleagueId = storedActive;
+      } else if (colleagues.length > 0) {
+        activeColleagueId = colleagues[0].id;
+      }
+
+      try {
+        const storedP = localStorage.getItem(STORAGE_KEY_PLANNER);
+        if (storedP) {
+          plannerState = Object.assign(plannerState, JSON.parse(storedP));
+          if (!plannerState.daysConfig) plannerState.daysConfig = {};
+        }
+      } catch (e) {}
+    }
+
+    function saveShiftsToStorage() {
+      localStorage.setItem(STORAGE_KEY_SHIFTS, JSON.stringify(shifts));
+      updateJournalCount();
+      updateHeaderSummary();
+    }
+
+    function saveColleaguesToStorage() {
+      localStorage.setItem(STORAGE_KEY_COLLEAGUES, JSON.stringify(colleagues));
+    }
+
+    function savePlannerToStorage() {
+      localStorage.setItem(STORAGE_KEY_PLANNER, JSON.stringify(plannerState));
+    }
+
+    function initDateInputs() {
+      const today = new Date().toISOString().split('T')[0];
+      const shiftDateInput = document.getElementById('shiftDate');
+      if (shiftDateInput) shiftDateInput.value = today;
+      handleDateChange();
+    }
+
+    /* =========================================================================
+       NAVIGATION TABS
+       ========================================================================= */
+    function switchTab(tabId) {
+      triggerHaptic('selection');
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-cyan-500/10', 'text-cyan-300', 'border-cyan-500/30');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activeContent = document.getElementById(`tab-${tabId}`);
+      const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+      if (activeContent) activeContent.classList.add('active');
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-cyan-500/10', 'text-cyan-300', 'border-cyan-500/30');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      if (tabId === 'journal') renderJournal();
+      if (tabId === 'planner') calculatePlan();
+      if (tabId === 'team') renderColleagues();
+    }
+
+    /* =========================================================================
+       CALCULATOR CORE LOGIC
+       ========================================================================= */
+    function setRole(role) {
+      triggerHaptic('medium');
+      currentRole = role;
+      const promoterBtn = document.getElementById('roleBtn-promoter');
+      const mediatorBtn = document.getElementById('roleBtn-mediator');
+      const promoterFields = document.getElementById('promoterFields');
+      const mediatorFields = document.getElementById('mediatorFields');
+      const calcRoleBadge = document.getElementById('calcRoleBadge');
+
+      if (role === 'promoter') {
+        promoterBtn.className = "p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500 shadow-md ring-1 ring-cyan-500/40";
+        mediatorBtn.className = "p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-futu-surface border-futu-border hover:border-slate-700 opacity-70";
+        promoterFields.classList.remove('hidden');
+        mediatorFields.classList.add('hidden');
+        calcRoleBadge.textContent = "Промоутер";
+        calcRoleBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800";
+      } else {
+        mediatorBtn.className = "p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-gradient-to-br from-purple-950/60 to-slate-900 border-purple-500 shadow-md ring-1 ring-purple-500/40";
+        promoterBtn.className = "p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all bg-futu-surface border-futu-border hover:border-slate-700 opacity-70";
+        promoterFields.classList.add('hidden');
+        mediatorFields.classList.remove('hidden');
+        calcRoleBadge.textContent = "Медиатор";
+        calcRoleBadge.className = "text-xs font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800";
+      }
+
+      handleDateChange();
+      recalcShift();
+    }
+
+    function handleDateChange() {
+      const dateStr = document.getElementById('shiftDate').value;
+      if (!dateStr) return;
+
+      const dateObj = new Date(dateStr + 'T12:00:00');
+      const dayOfWeek = dateObj.getDay();
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+      const daysRu = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+      const badge = document.getElementById('dateDayOfWeekBadge');
+      
+      if (badge) {
+        if (isWeekend) {
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> <span class="text-amber-400 font-semibold">${daysRu[dayOfWeek]} (Выходной)</span>`;
+        } else {
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-400"></span> <span class="text-cyan-400">${daysRu[dayOfWeek]} (Будни)</span>`;
+        }
+      }
+
+      const customWeekendCheckbox = document.getElementById('mediatorCustomWeekend');
+      if (customWeekendCheckbox) customWeekendCheckbox.checked = isWeekend;
+
+      recalcShift();
+    }
+
+    function setHours(h) {
+      triggerHaptic('light');
+      document.getElementById('shiftHours').value = h;
+      recalcShift();
+    }
+
+    function setGuests(g) {
+      triggerHaptic('light');
+      document.getElementById('shiftGuests').value = g;
+      recalcShift();
+    }
+
+    function setReviews(r) {
+      triggerHaptic('light');
+      document.getElementById('shiftReviews').value = r;
+      document.getElementById('shiftReviewsSlider').value = r;
+      recalcShift();
+    }
+
+    function syncReviewsSliderFromInput() {
+      const val = Math.min(100, Math.max(0, parseInt(document.getElementById('shiftReviews').value, 10) || 0));
+      document.getElementById('shiftReviewsSlider').value = val;
+      recalcShift();
+    }
+
+    function syncReviewsInputFromSlider() {
+      const val = document.getElementById('shiftReviewsSlider').value;
+      document.getElementById('shiftReviews').value = val;
+      recalcShift();
+    }
+
+    function setExtraIncome(amount) {
+      triggerHaptic('light');
+      document.getElementById('shiftExtraIncome').value = amount;
+      recalcShift();
+    }
+
+    function adjustValue(elementId, step, min, max) {
+      triggerHaptic('light');
+      const input = document.getElementById(elementId);
+      let val = parseFloat(input.value) || 0;
+      val += step;
+      if (val < min) val = min;
+      if (val > max) val = max;
+      input.value = val;
+
+      if (elementId === 'shiftReviews') {
+        document.getElementById('shiftReviewsSlider').value = val;
+      }
+      recalcShift();
+    }
+
+    // MAIN FORMULA ENGINE
+    function recalcShift() {
+      const hours = Math.max(0, parseFloat(document.getElementById('shiftHours').value) || 0);
+      document.getElementById('hoursDisplayBadge').textContent = `${hours} ч`;
+
+      const extraIncome = Math.max(0, parseFloat(document.getElementById('shiftExtraIncome').value) || 0);
+      const extraComment = (document.getElementById('shiftExtraIncomeComment').value || '').trim();
+      document.getElementById('extraIncomeBadge').textContent = `+${formatMoney(extraIncome)}`;
+
+      if (currentRole === 'promoter') {
+        /* PROMOTER:
+           - 360 ₽ / hr
+           - 1 to 20 guests: 100 ₽ each (20 guests = 2 000 ₽)
+           - Starting from 21st: 150 ₽ each
+           - Daily Plan: multiplier x1.3 on (hoursPay + guestsPay)
+           - Extra income is added to total
+        */
+        const guests = Math.max(0, parseInt(document.getElementById('shiftGuests').value, 10) || 0);
+        const isPlanCompleted = document.getElementById('shiftPlanCompleted').checked;
+
+        const hourlyRate = 360;
+        const hoursPay = hours * hourlyRate;
+
+        let guestsPay = 0;
+        let tier1Pay = 0;
+        let tier2Pay = 0;
+
+        if (guests <= 20) {
+          tier1Pay = guests * 100;
+          guestsPay = tier1Pay;
+        } else {
+          tier1Pay = 20 * 100; // exactly 2 000 ₽
+          tier2Pay = (guests - 20) * 150;
+          guestsPay = tier1Pay + tier2Pay;
+        }
+
+        const subtotal = hoursPay + guestsPay;
+        const multiplier = isPlanCompleted ? 1.3 : 1.0;
+        const subtotalWithPlan = Math.round(subtotal * multiplier);
+        const planBonus = subtotalWithPlan - subtotal;
+        const total = subtotalWithPlan + extraIncome;
+
+        currentCalcResult = {
+          role: 'promoter',
+          hours,
+          hourlyRate,
+          hoursPay,
+          guests,
+          guestsPay,
+          tier1Pay,
+          tier2Pay,
+          subtotal,
+          isPlanCompleted,
+          multiplier,
+          planBonus,
+          extraIncome,
+          extraComment,
+          total
+        };
+
+        // Render card values
+        document.getElementById('guestsSummaryBadge').textContent = `+${formatMoney(guestsPay)}`;
+        document.getElementById('calcHoursLabel').textContent = `Часы (${hours}ч × 360 ₽):`;
+        document.getElementById('calcHoursSum').textContent = formatMoney(hoursPay);
+
+        document.getElementById('calcMetricLabel').textContent = `Гости (${guests} чел):`;
+        document.getElementById('calcMetricSum').textContent = formatMoney(guestsPay);
+
+        const tierDetail = document.getElementById('calcTierDetailRow');
+        if (guests > 20) {
+          tierDetail.textContent = `↳ 20 чел по 100 ₽ (${formatMoney(tier1Pay)}) + ${guests - 20} чел по 150 ₽ (${formatMoney(tier2Pay)})`;
+          tierDetail.classList.remove('hidden');
+        } else if (guests > 0) {
+          tierDetail.textContent = `↳ ${guests} чел × 100 ₽ = ${formatMoney(tier1Pay)}`;
+          tierDetail.classList.remove('hidden');
+        } else {
+          tierDetail.classList.add('hidden');
+        }
+
+        const subtotalRow = document.getElementById('calcSubtotalRow');
+        const bonusRow = document.getElementById('calcBonusRow');
+
+        if (isPlanCompleted) {
+          subtotalRow.classList.remove('hidden');
+          document.getElementById('calcSubtotalSum').textContent = formatMoney(subtotal);
+
+          bonusRow.classList.remove('hidden');
+          document.getElementById('calcBonusSum').textContent = `+${formatMoney(planBonus)}`;
+        } else {
+          subtotalRow.classList.add('hidden');
+          bonusRow.classList.add('hidden');
+        }
+
+      } else {
+        /* MEDIATOR:
+           - Weekday: 377 ₽ / hr
+           - Weekend: 403 ₽ / hr
+           - Reviews: 100 ₽ each (0 to 100 reviews max)
+           - Extra income added to total
+        */
+        const isWeekend = document.getElementById('mediatorCustomWeekend').checked;
+        const hourlyRate = isWeekend ? 403 : 377;
+        const hoursPay = Math.round(hours * hourlyRate);
+
+        const reviews = Math.min(100, Math.max(0, parseInt(document.getElementById('shiftReviews').value, 10) || 0));
+        const reviewsPay = reviews * 100;
+        const subtotal = hoursPay + reviewsPay;
+        const total = subtotal + extraIncome;
+
+        currentCalcResult = {
+          role: 'mediator',
+          hours,
+          hourlyRate,
+          hoursPay,
+          isWeekend,
+          reviews,
+          reviewsPay,
+          extraIncome,
+          extraComment,
+          total
+        };
+
+        const tariffLabel = document.getElementById('mediatorTariffLabel');
+        if (isWeekend) {
+          tariffLabel.innerHTML = `<span class="text-amber-400 font-bold">Выходные — 403 ₽/час</span>`;
+        } else {
+          tariffLabel.innerHTML = `<span class="text-emerald-400 font-bold">Будни — 377 ₽/час</span>`;
+        }
+
+        document.getElementById('reviewsSummaryBadge').textContent = `+${formatMoney(reviewsPay)}`;
+        document.getElementById('calcHoursLabel').textContent = `Часы (${hours}ч × ${hourlyRate} ₽):`;
+        document.getElementById('calcHoursSum').textContent = formatMoney(hoursPay);
+
+        document.getElementById('calcMetricLabel').textContent = `Отзывы (${reviews} шт × 100 ₽):`;
+        document.getElementById('calcMetricSum').textContent = formatMoney(reviewsPay);
+
+        document.getElementById('calcTierDetailRow').classList.add('hidden');
+        document.getElementById('calcSubtotalRow').classList.add('hidden');
+        document.getElementById('calcBonusRow').classList.add('hidden');
+      }
+
+      // Extra income row update
+      const extraRow = document.getElementById('calcExtraIncomeRow');
+      if (extraIncome > 0) {
+        extraRow.classList.remove('hidden');
+        document.getElementById('calcExtraIncomeSum').textContent = `+${formatMoney(extraIncome)}`;
+      } else {
+        extraRow.classList.add('hidden');
+      }
+
+      document.getElementById('calcTotalSum').textContent = formatMoney(currentCalcResult.total);
+      const ratePerHour = hours > 0 ? Math.round(currentCalcResult.total / hours) : 0;
+      document.getElementById('calcRatePerHourSub').textContent = `~${formatMoney(ratePerHour)} / час со всеми бонусами и доплатами`;
+    }
+
+    /* =========================================================================
+       SAVE SHIFT & JOURNAL
+       ========================================================================= */
+    function saveShift() {
+      if (!currentCalcResult) recalcShift();
+
+      const dateStr = document.getElementById('shiftDate').value;
+      if (!dateStr) {
+        showToast('Пожалуйста, укажите дату смены', 'warning');
+        return;
+      }
+
+      const colleagueId = document.getElementById('shiftColleague').value || activeColleagueId;
+      const colleague = colleagues.find(c => c.id === colleagueId) || { name: 'Сотрудник' };
+      const comment = (document.getElementById('shiftComment').value || '').trim();
+
+      const newShift = {
+        id: 'shift_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        colleagueId: colleagueId,
+        colleagueName: colleague.name,
+        date: dateStr,
+        comment: comment,
+        createdAt: new Date().toISOString(),
+        ...currentCalcResult
+      };
+
+      shifts.unshift(newShift);
+      saveShiftsToStorage();
+
+      triggerHaptic('success');
+      showToast(`Смена записана! (+${formatMoney(newShift.total)})`, 'success');
+      document.getElementById('shiftComment').value = '';
+      document.getElementById('shiftExtraIncome').value = 0;
+      document.getElementById('shiftExtraIncomeComment').value = '';
+      recalcShift();
+      
+      renderJournal();
+      updateHeaderSummary();
+    }
+
+    // TELEGRAM BOT SEND DATA HANDLER
+    function sendCurrentShiftToBot() {
+      if (!currentCalcResult) recalcShift();
+
+      const dateStr = document.getElementById('shiftDate').value;
+      const colleagueId = document.getElementById('shiftColleague').value || activeColleagueId;
+      const colleague = colleagues.find(c => c.id === colleagueId) || { name: 'Сотрудник' };
+      const comment = (document.getElementById('shiftComment').value || '').trim();
+      const r = currentCalcResult;
+
+      const payload = {
+        source: 'futurione_salary_os',
+        action: 'submit_shift',
+        employee: colleague.name,
+        date: dateStr,
+        role: r.role,
+        roleRu: r.role === 'promoter' ? 'Промоутер' : 'Медиатор',
+        hours: r.hours,
+        hourlyRate: r.hourlyRate,
+        hoursPay: r.hoursPay,
+        metricCount: r.role === 'promoter' ? r.guests : r.reviews,
+        metricLabel: r.role === 'promoter' ? 'Гости' : 'Отзывы',
+        metricPay: r.role === 'promoter' ? r.guestsPay : r.reviewsPay,
+        isPlanCompleted: r.role === 'promoter' ? Boolean(r.isPlanCompleted) : false,
+        planBonus: r.planBonus || 0,
+        extraIncome: r.extraIncome || 0,
+        extraComment: r.extraComment || '',
+        total: r.total,
+        comment: comment
+      };
+
+      if (tg?.sendData) {
+        try {
+          tg.sendData(JSON.stringify(payload));
+          triggerHaptic('success');
+          showToast('Данные успешно отправлены в чат бота!', 'success');
+        } catch (e) {
+          // If app was launched via menu button instead of KeyboardButton, sendData isn't supported by Telegram
+          copyCurrentShiftReport();
+          if (tg?.showAlert) {
+            tg.showAlert('Отчет скопирован в буфер обмена! Вставьте его в чат боту (функция мгновенной отправки активна при открытии через клавиатуру бота).');
+          } else {
+            showToast('Отчет скопирован в буфер для отправки боту', 'info');
+          }
+        }
+      } else {
+        copyCurrentShiftReport();
+      }
+    }
+
+    function renderJournal() {
+      const colleagueFilter = document.getElementById('filterColleague').value;
+      const monthFilter = document.getElementById('filterMonth').value;
+      const roleFilter = document.getElementById('filterRole').value;
+
+      const filtered = shifts.filter(s => {
+        if (colleagueFilter !== 'all' && s.colleagueId !== colleagueFilter) return false;
+        if (roleFilter !== 'all' && s.role !== roleFilter) return false;
+        if (monthFilter !== 'all' && !s.date.startsWith(monthFilter)) return false;
+        return true;
+      });
+
+      // Recalculate summary stats
+      let totalMoney = 0;
+      let totalHours = 0;
+      let totalGuests = 0;
+      let totalReviews = 0;
+      let totalExtra = 0;
+      let planCount = 0;
+
+      filtered.forEach(s => {
+        totalMoney += (s.total || 0);
+        totalHours += (s.hours || 0);
+        totalExtra += (s.extraIncome || 0);
+        if (s.role === 'promoter') {
+          totalGuests += (s.guests || 0);
+          if (s.isPlanCompleted) planCount++;
+        } else if (s.role === 'mediator') {
+          totalReviews += (s.reviews || 0);
+        }
+      });
+
+      document.getElementById('statTotalMoney').textContent = formatMoney(totalMoney);
+      document.getElementById('statTotalHours').textContent = `${totalHours} ч`;
+      document.getElementById('statTotalShifts').textContent = filtered.length;
+      document.getElementById('statTotalExtra').textContent = formatMoney(totalExtra);
+
+      const avgPerHour = totalHours > 0 ? Math.round(totalMoney / totalHours) : 0;
+      const avgPerShift = filtered.length > 0 ? Math.round(totalMoney / filtered.length) : 0;
+
+      document.getElementById('statAvgHourlyRate').textContent = `Ставка: ~${formatMoney(avgPerHour)}/ч`;
+      document.getElementById('statAvgPerShift').textContent = `Ср. смена: ~${formatMoney(avgPerShift)}`;
+      document.getElementById('statKeyMetric').textContent = `${totalGuests} / ${totalReviews}`;
+      document.getElementById('statPlanSummaryBadge').textContent = `${planCount} планов (×1.3)`;
+
+      // Render cards
+      const container = document.getElementById('journalShiftsList');
+      const emptyState = document.getElementById('journalEmptyState');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = filtered.map(s => {
+        const isPromoter = s.role === 'promoter';
+        const formattedDate = formatRussianDate(s.date);
+
+        return `
+          <div class="bg-futu-card hover:bg-futu-cardHover p-4 sm:p-5 rounded-2xl border border-futu-border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            <div class="flex items-start sm:items-center gap-3.5">
+              <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 ${isPromoter ? 'bg-cyan-950/80 border border-cyan-800 text-cyan-300' : 'bg-purple-950/80 border border-purple-800 text-purple-300'}">
+                ${isPromoter ? '🚀' : '🎙️'}
+              </div>
+
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-display font-bold text-base text-slate-100">${formattedDate}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isPromoter ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'bg-purple-950 text-purple-300 border border-purple-800'}">
+                    ${isPromoter ? 'Промоутер' : 'Медиатор'}
+                  </span>
+                  <span class="text-xs text-slate-400 font-medium flex items-center gap-1">
+                    👤 ${escapeHtml(s.colleagueName || 'Сотрудник')}
+                  </span>
+                </div>
+
+                <!-- Metrics badges -->
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-400">
+                  <span>⏱ <strong class="text-slate-200">${s.hours} ч</strong> (${s.hourlyRate} ₽/ч = ${formatMoney(s.hoursPay)})</span>
+                  ${isPromoter 
+                    ? `<span>👥 Гости: <strong class="text-slate-200">${s.guests} чел</strong> (+${formatMoney(s.guestsPay)})</span>`
+                    : `<span>⭐ Отзывы: <strong class="text-slate-200">${s.reviews} шт</strong> (+${formatMoney(s.reviewsPay)})</span>`
+                  }
+                  ${s.isPlanCompleted ? `<span class="text-amber-400 font-semibold px-2 py-0.5 rounded bg-amber-950/80 border border-amber-700/60">★ План ×1.3 (+${formatMoney(s.planBonus)})</span>` : ''}
+                  ${s.extraIncome > 0 ? `<span class="text-indigo-300 font-semibold px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-700/60">🎁 Доп: +${formatMoney(s.extraIncome)} ${s.extraComment ? '(' + escapeHtml(s.extraComment) + ')' : ''}</span>` : ''}
+                </div>
+
+                ${s.comment ? `<p class="text-xs text-slate-400 italic mt-1.5 pl-2 border-l-2 border-slate-700">«${escapeHtml(s.comment)}»</p>` : ''}
+              </div>
+            </div>
+
+            <!-- Amount & Actions -->
+            <div class="flex items-center justify-between md:justify-end gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-futu-border">
+              <div class="text-right">
+                <span class="font-display font-extrabold text-xl sm:text-2xl text-emerald-400 block">${formatMoney(s.total)}</span>
+                <span class="text-[11px] text-slate-500">~${Math.round(s.total / (s.hours || 1))} ₽/ч</span>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="copySingleShiftReport('${s.id}')" title="Скопировать отчет для Telegram" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 flex items-center justify-center transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                </button>
+                <button type="button" onclick="openEditShiftModal('${s.id}')" title="Редактировать" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </button>
+                <button type="button" onclick="promptDeleteShift('${s.id}')" title="Удалить" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-400 flex items-center justify-center transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    function promptDeleteShift(shiftId) {
+      showConfirmModal(
+        'Удалить смену?',
+        'Смена будет навсегда удалена из журнала заметок.',
+        () => {
+          shifts = shifts.filter(s => s.id !== shiftId);
+          saveShiftsToStorage();
+          renderJournal();
+          showToast('Смена удалена', 'info');
+        }
+      );
+    }
+
+    /* =========================================================================
+       EDIT SHIFT MODAL
+       ========================================================================= */
+    function openEditShiftModal(shiftId) {
+      triggerHaptic('light');
+      const shift = shifts.find(s => s.id === shiftId);
+      if (!shift) return;
+
+      document.getElementById('editShiftId').value = shift.id;
+      document.getElementById('editDate').value = shift.date;
+      document.getElementById('editHours').value = shift.hours;
+      document.getElementById('editRole').value = shift.role;
+      document.getElementById('editComment').value = shift.comment || '';
+      document.getElementById('editExtraIncome').value = shift.extraIncome || 0;
+      document.getElementById('editExtraComment').value = shift.extraComment || '';
+
+      if (shift.role === 'promoter') {
+        document.getElementById('editGuests').value = shift.guests || 0;
+        document.getElementById('editPlanCompleted').checked = !!shift.isPlanCompleted;
+      } else {
+        document.getElementById('editReviews').value = shift.reviews || 0;
+        document.getElementById('editIsWeekend').checked = !!shift.isWeekend;
+      }
+
+      toggleEditRoleFields();
+      document.getElementById('editShiftModal').classList.remove('hidden');
+    }
+
+    function toggleEditRoleFields() {
+      const role = document.getElementById('editRole').value;
+      const promoterBlock = document.getElementById('editPromoterBlock');
+      const mediatorBlock = document.getElementById('editMediatorBlock');
+
+      if (role === 'promoter') {
+        promoterBlock.classList.remove('hidden');
+        mediatorBlock.classList.add('hidden');
+      } else {
+        promoterBlock.classList.add('hidden');
+        mediatorBlock.classList.remove('hidden');
+      }
+    }
+
+    function closeEditShiftModal() {
+      document.getElementById('editShiftModal').classList.add('hidden');
+    }
+
+    function commitShiftEdit() {
+      const id = document.getElementById('editShiftId').value;
+      const index = shifts.findIndex(s => s.id === id);
+      if (index === -1) return;
+
+      const date = document.getElementById('editDate').value;
+      const hours = Math.max(0.5, parseFloat(document.getElementById('editHours').value) || 0);
+      const role = document.getElementById('editRole').value;
+      const comment = (document.getElementById('editComment').value || '').trim();
+      const extraIncome = Math.max(0, parseFloat(document.getElementById('editExtraIncome').value) || 0);
+      const extraComment = (document.getElementById('editExtraComment').value || '').trim();
+
+      let updated = {
+        ...shifts[index],
+        date,
+        hours,
+        role,
+        comment,
+        extraIncome,
+        extraComment
+      };
+
+      if (role === 'promoter') {
+        const guests = Math.max(0, parseInt(document.getElementById('editGuests').value, 10) || 0);
+        const isPlanCompleted = document.getElementById('editPlanCompleted').checked;
+        const hourlyRate = 360;
+        const hoursPay = hours * hourlyRate;
+
+        let guestsPay = 0;
+        let tier1Pay = 0;
+        let tier2Pay = 0;
+
+        if (guests <= 20) {
+          tier1Pay = guests * 100;
+          guestsPay = tier1Pay;
+        } else {
+          tier1Pay = 20 * 100;
+          tier2Pay = (guests - 20) * 150;
+          guestsPay = tier1Pay + tier2Pay;
+        }
+
+        const subtotal = hoursPay + guestsPay;
+        const multiplier = isPlanCompleted ? 1.3 : 1.0;
+        const subtotalWithPlan = Math.round(subtotal * multiplier);
+        const planBonus = subtotalWithPlan - subtotal;
+        const total = subtotalWithPlan + extraIncome;
+
+        updated = {
+          ...updated,
+          hourlyRate,
+          hoursPay,
+          guests,
+          guestsPay,
+          tier1Pay,
+          tier2Pay,
+          subtotal,
+          isPlanCompleted,
+          multiplier,
+          planBonus,
+          total
+        };
+      } else {
+        const isWeekend = document.getElementById('editIsWeekend').checked;
+        const hourlyRate = isWeekend ? 403 : 377;
+        const hoursPay = Math.round(hours * hourlyRate);
+        const reviews = Math.min(100, Math.max(0, parseInt(document.getElementById('editReviews').value, 10) || 0));
+        const reviewsPay = reviews * 100;
+        const total = hoursPay + reviewsPay + extraIncome;
+
+        updated = {
+          ...updated,
+          hourlyRate,
+          hoursPay,
+          isWeekend,
+          reviews,
+          reviewsPay,
+          total
+        };
+      }
+
+      shifts[index] = updated;
+      saveShiftsToStorage();
+      triggerHaptic('success');
+      closeEditShiftModal();
+      renderJournal();
+      showToast('Смена успешно обновлена', 'success');
+    }
+
+    /* =========================================================================
+       PLANNER ENGINE: INDIVIDUAL PER-SHIFT CUSTOMIZATION
+       ========================================================================= */
+    function initPlannerDefaults() {
+      document.getElementById('planTargetMoney').value = plannerState.targetMoney;
+      document.getElementById('planShiftHours').value = plannerState.templateHours;
+      document.getElementById('planGuests').value = plannerState.templateGuests;
+      document.getElementById('planReviews').value = plannerState.templateReviews;
+      document.getElementById('planAssumeBonus').checked = plannerState.templateAssumeBonus;
+
+      setPlanDays(plannerState.daysCount);
+      setPlanRole(plannerState.templateRole);
+    }
+
+    function setPlanTarget(amount) {
+      triggerHaptic('light');
+      document.getElementById('planTargetMoney').value = amount;
+      calculatePlan();
+    }
+
+    function setPlanDays(days) {
+      triggerHaptic('light');
+      plannerState.daysCount = days;
+      const btn15 = document.getElementById('planDaysBtn-15');
+      const btn30 = document.getElementById('planDaysBtn-30');
+
+      if (days === 15) {
+        btn15.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-cyan-950/70 border-cyan-500 text-cyan-300 ring-1 ring-cyan-500/30";
+        btn30.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-futu-surface border-futu-border text-slate-300 hover:border-slate-600";
+      } else {
+        btn30.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-cyan-950/70 border-cyan-500 text-cyan-300 ring-1 ring-cyan-500/30";
+        btn15.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-sm transition bg-futu-surface border-futu-border text-slate-300 hover:border-slate-600";
+      }
+
+      // Ensure daysConfig exists
+      for (let d = 1; d <= days; d++) {
+        if (!plannerState.daysConfig[d]) {
+          plannerState.daysConfig[d] = createDefaultDayConfig(d);
+        }
+      }
+
+      savePlannerToStorage();
+      renderPlanDaysGrid();
+      calculatePlan();
+    }
+
+    function setPlanRole(role) {
+      triggerHaptic('light');
+      plannerState.templateRole = role;
+      const btnP = document.getElementById('planRoleBtn-promoter');
+      const btnM = document.getElementById('planRoleBtn-mediator');
+      const pBlock = document.getElementById('planPromoterMetrics');
+      const mBlock = document.getElementById('planMediatorMetrics');
+
+      if (role === 'promoter') {
+        btnP.className = "py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-cyan-950 border-cyan-500 text-cyan-300";
+        btnM.className = "py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-futu-surface border-futu-border text-slate-300";
+        pBlock.classList.remove('hidden');
+        mBlock.classList.add('hidden');
+      } else {
+        btnM.className = "py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-purple-950 border-purple-500 text-purple-300";
+        btnP.className = "py-2.5 px-3 rounded-xl border text-center text-xs font-bold transition bg-futu-surface border-futu-border text-slate-300";
+        pBlock.classList.add('hidden');
+        mBlock.classList.remove('hidden');
+      }
+
+      handlePlannerTemplateChange();
+    }
+
+    function handlePlannerTemplateChange() {
+      const hours = parseInt(document.getElementById('planShiftHours').value, 10);
+      const guests = parseInt(document.getElementById('planGuests').value, 10);
+      const reviews = parseInt(document.getElementById('planReviews').value, 10);
+      const assumeBonus = document.getElementById('planAssumeBonus').checked;
+
+      plannerState.templateHours = hours;
+      plannerState.templateGuests = guests;
+      plannerState.templateReviews = reviews;
+      plannerState.templateAssumeBonus = assumeBonus;
+
+      document.getElementById('planShiftHoursLabel').textContent = `${hours} часов`;
+      document.getElementById('planGuestsLabel').textContent = `${guests} чел`;
+      document.getElementById('planReviewsLabel').textContent = `${reviews} шт`;
+
+      savePlannerToStorage();
+      calculatePlan();
+    }
+
+    function createDefaultDayConfig(dayNum) {
+      return {
+        isWorkday: false,
+        role: plannerState.templateRole,
+        hours: plannerState.templateHours,
+        guests: plannerState.templateGuests,
+        planCompleted: plannerState.templateAssumeBonus,
+        reviews: plannerState.templateReviews,
+        isWeekend: (dayNum % 7 === 6 || dayNum % 7 === 0),
+        extraIncome: 0,
+        extraComment: ''
+      };
+    }
+
+    function computeDayEarnings(dayConfig) {
+      if (!dayConfig || !dayConfig.isWorkday) return 0;
+
+      const hours = Number(dayConfig.hours) || 0;
+      const extra = Number(dayConfig.extraIncome) || 0;
+
+      if (dayConfig.role === 'promoter') {
+        const hourlyRate = 360;
+        const hoursPay = hours * hourlyRate;
+        const guests = Number(dayConfig.guests) || 0;
+        let guestsPay = 0;
+        if (guests <= 20) {
+          guestsPay = guests * 100;
+        } else {
+          guestsPay = 2000 + (guests - 20) * 150;
+        }
+        const subtotal = hoursPay + guestsPay;
+        const subtotalWithPlan = dayConfig.planCompleted ? Math.round(subtotal * 1.3) : subtotal;
+        return subtotalWithPlan + extra;
+      } else {
+        const hourlyRate = dayConfig.isWeekend ? 403 : 377;
+        const hoursPay = Math.round(hours * hourlyRate);
+        const reviews = Number(dayConfig.reviews) || 0;
+        const reviewsPay = reviews * 100;
+        return hoursPay + reviewsPay + extra;
+      }
+    }
+
+    function calculatePlan() {
+      const target = Math.max(1000, parseFloat(document.getElementById('planTargetMoney').value) || 0);
+      plannerState.targetMoney = target;
+
+      const totalDays = plannerState.daysCount;
+      let scheduledMoney = 0;
+      let scheduledShiftsCount = 0;
+      let scheduledHours = 0;
+
+      for (let d = 1; d <= totalDays; d++) {
+        let conf = plannerState.daysConfig[d];
+        if (!conf) {
+          conf = createDefaultDayConfig(d);
+          plannerState.daysConfig[d] = conf;
+        }
+        if (conf.isWorkday) {
+          scheduledShiftsCount++;
+          scheduledHours += Number(conf.hours) || 0;
+          scheduledMoney += computeDayEarnings(conf);
+        }
+      }
+
+      const restDays = Math.max(0, totalDays - scheduledShiftsCount);
+      const avgPerShift = scheduledShiftsCount > 0 ? Math.round(scheduledMoney / scheduledShiftsCount) : 0;
+
+      document.getElementById('planEstimatedPerShift').textContent = `~${formatMoney(avgPerShift)} ср./смена`;
+      document.getElementById('planShiftsCountStat').textContent = scheduledShiftsCount;
+      document.getElementById('planTotalHoursStat').textContent = `${scheduledHours} ч`;
+      document.getElementById('planRestDaysStat').textContent = restDays;
+
+      document.getElementById('planPaceText').textContent = `из ${totalDays} дней`;
+      const weeklyHours = Math.round((scheduledHours / totalDays) * 7);
+      document.getElementById('planWeeklyHoursText').textContent = `~${weeklyHours} ч в нед.`;
+
+      // Progress bars
+      const planPercent = Math.min(200, Math.round((scheduledMoney / target) * 100));
+      document.getElementById('planScheduledMoneySum').textContent = formatMoney(scheduledMoney);
+      document.getElementById('planProgressPercent').textContent = `${planPercent}%`;
+
+      const progressBar = document.getElementById('planProgressBar');
+      progressBar.style.width = `${Math.min(100, planPercent)}%`;
+
+      // Actual fact from journal
+      const now = new Date();
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const thisMonthShifts = shifts.filter(s => s.date.startsWith(currentMonthKey));
+      const factMoney = thisMonthShifts.reduce((acc, s) => acc + (s.total || 0), 0);
+      const factPercent = Math.min(200, Math.round((factMoney / target) * 100));
+
+      document.getElementById('planActualFactMoney').textContent = formatMoney(factMoney);
+      document.getElementById('planFactPercent').textContent = `${factPercent}%`;
+      document.getElementById('planFactProgressBar').style.width = `${Math.min(100, factPercent)}%`;
+
+      const statusMsg = document.getElementById('planGoalStatusMsg');
+      if (scheduledMoney >= target) {
+        const overage = scheduledMoney - target;
+        statusMsg.innerHTML = `<span class="text-emerald-400 font-bold">🎉 План полностью закрывает цель! (+${formatMoney(overage)})</span> Вы составили отличный график без дефицита.`;
+        progressBar.className = "h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300";
+      } else {
+        const diff = target - scheduledMoney;
+        statusMsg.innerHTML = `<span>В плане не хватает: <strong class="text-amber-400">${formatMoney(diff)}</strong></span> (добавьте еще ~${avgPerShift > 0 ? Math.ceil(diff / avgPerShift) : 1} смен или увеличьте часы/отзывы)`;
+        progressBar.className = "h-full rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-300";
+      }
+
+      savePlannerToStorage();
+      renderPlanDaysGrid();
+    }
+
+    function renderPlanDaysGrid() {
+      const container = document.getElementById('planDaysGrid');
+      container.innerHTML = '';
+
+      const totalDays = plannerState.daysCount;
+      for (let day = 1; day <= totalDays; day++) {
+        let conf = plannerState.daysConfig[day];
+        if (!conf) {
+          conf = createDefaultDayConfig(day);
+          plannerState.daysConfig[day] = conf;
+        }
+
+        const isWork = !!conf.isWorkday;
+        const dayEarning = computeDayEarnings(conf);
+
+        const card = document.createElement('div');
+        card.className = isWork
+          ? "p-2.5 rounded-2xl border flex flex-col justify-between transition-all bg-gradient-to-b from-cyan-950/40 via-slate-900 to-futu-card border-cyan-500/50 hover:border-cyan-400 shadow-md cursor-pointer group"
+          : "p-2.5 rounded-2xl border flex flex-col justify-between transition-all bg-futu-surface border-futu-border hover:border-slate-700 opacity-70 hover:opacity-100 cursor-pointer group";
+
+        card.onclick = () => openDayModal(day);
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] uppercase font-bold text-slate-500">День ${day}</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${isWork ? (conf.role === 'promoter' ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'bg-purple-950 text-purple-300 border border-purple-800') : 'bg-slate-800 text-slate-500'}">
+                ${isWork ? (conf.role === 'promoter' ? 'Пром' : 'Мед') : 'Вых'}
+              </span>
+            </div>
+
+            <div class="font-display font-extrabold text-sm ${isWork ? 'text-emerald-400' : 'text-slate-600'}">
+              ${isWork ? formatMoney(dayEarning) : 'Отдых'}
+            </div>
+          </div>
+
+          <div class="mt-2 pt-1.5 border-t border-futu-border/60 flex items-center justify-between text-[10px] text-slate-400">
+            <span>${isWork ? `${conf.hours}ч • ${conf.role === 'promoter' ? conf.guests + 'чел' : conf.reviews + 'отз'}` : '—'}</span>
+            <span class="text-cyan-400 opacity-0 group-hover:opacity-100 transition">✎</span>
+          </div>
+        `;
+
+        container.appendChild(card);
+      }
+    }
+
+    /* =========================================================================
+       DAY INSPECTOR MODAL
+       ========================================================================= */
+    function openDayModal(dayNum) {
+      triggerHaptic('light');
+      document.getElementById('dayModalDayNum').value = dayNum;
+      document.getElementById('dayModalTitle').textContent = `День ${dayNum}`;
+
+      let conf = plannerState.daysConfig[dayNum] || createDefaultDayConfig(dayNum);
+
+      setDayModalStatus(conf.isWorkday);
+      setDayModalRole(conf.role || 'promoter');
+
+      document.getElementById('dayModalHoursSlider').value = conf.hours || 8;
+      document.getElementById('dayModalHoursInput').value = conf.hours || 8;
+      document.getElementById('dayModalHoursBadge').textContent = `${conf.hours || 8} ч`;
+
+      document.getElementById('dayModalGuestsSlider').value = conf.guests !== undefined ? conf.guests : 18;
+      document.getElementById('dayModalGuestsBadge').textContent = `${conf.guests !== undefined ? conf.guests : 18} чел`;
+      document.getElementById('dayModalPlanCheckbox').checked = !!conf.planCompleted;
+
+      const reviewsVal = conf.reviews !== undefined ? conf.reviews : 15;
+      document.getElementById('dayModalReviewsSlider').value = reviewsVal;
+      document.getElementById('dayModalReviewsInput').value = reviewsVal;
+      document.getElementById('dayModalReviewsBadge').textContent = `${reviewsVal} шт`;
+      document.getElementById('dayModalWeekendCheckbox').checked = !!conf.isWeekend;
+
+      document.getElementById('dayModalExtraInput').value = conf.extraIncome || 0;
+      document.getElementById('dayModalExtraComment').value = conf.extraComment || '';
+      document.getElementById('dayModalExtraBadge').textContent = `+${formatMoney(conf.extraIncome || 0)}`;
+
+      recalcDayModalEarnings();
+      document.getElementById('dayCustomizerModal').classList.remove('hidden');
+    }
+
+    function closeDayModal() {
+      document.getElementById('dayCustomizerModal').classList.add('hidden');
+    }
+
+    let modalWorkdayState = true;
+    let modalRoleState = 'promoter';
+
+    function setDayModalStatus(isWork) {
+      modalWorkdayState = isWork;
+      const workBtn = document.getElementById('dayModalStatusWork');
+      const restBtn = document.getElementById('dayModalStatusRest');
+      const fields = document.getElementById('dayModalWorkdayFields');
+
+      if (isWork) {
+        workBtn.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-cyan-950 border-cyan-500 text-cyan-300";
+        restBtn.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-futu-surface border-futu-border text-slate-400";
+        fields.classList.remove('hidden');
+      } else {
+        restBtn.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-slate-800 border-slate-600 text-slate-200";
+        workBtn.className = "py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition bg-futu-surface border-futu-border text-slate-400";
+        fields.classList.add('hidden');
+      }
+      recalcDayModalEarnings();
+    }
+
+    function setDayModalRole(role) {
+      modalRoleState = role;
+      const pBtn = document.getElementById('dayModalRolePromoter');
+      const mBtn = document.getElementById('dayModalRoleMediator');
+      const pFields = document.getElementById('dayModalPromoterFields');
+      const mFields = document.getElementById('dayModalMediatorFields');
+
+      if (role === 'promoter') {
+        pBtn.className = "py-2 px-3 rounded-xl border text-center text-xs font-bold transition bg-cyan-950 border-cyan-500 text-cyan-300";
+        mBtn.className = "py-2 px-3 rounded-xl border text-center text-xs font-bold transition bg-futu-surface border-futu-border text-slate-400";
+        pFields.classList.remove('hidden');
+        mFields.classList.add('hidden');
+      } else {
+        mBtn.className = "py-2 px-3 rounded-xl border text-center text-xs font-bold transition bg-purple-950 border-purple-500 text-purple-300";
+        pBtn.className = "py-2 px-3 rounded-xl border text-center text-xs font-bold transition bg-futu-surface border-futu-border text-slate-400";
+        pFields.classList.add('hidden');
+        mFields.classList.remove('hidden');
+      }
+      recalcDayModalEarnings();
+    }
+
+    function syncDayModalHours() {
+      const val = document.getElementById('dayModalHoursSlider').value;
+      document.getElementById('dayModalHoursInput').value = val;
+      document.getElementById('dayModalHoursBadge').textContent = `${val} ч`;
+      recalcDayModalEarnings();
+    }
+
+    function syncDayModalHoursFromInput() {
+      const val = Math.min(24, Math.max(0.5, parseFloat(document.getElementById('dayModalHoursInput').value) || 0.5));
+      document.getElementById('dayModalHoursSlider').value = val;
+      document.getElementById('dayModalHoursBadge').textContent = `${val} ч`;
+      recalcDayModalEarnings();
+    }
+
+    function syncDayModalGuests() {
+      const val = document.getElementById('dayModalGuestsSlider').value;
+      document.getElementById('dayModalGuestsBadge').textContent = `${val} чел`;
+      recalcDayModalEarnings();
+    }
+
+    function syncDayModalReviews() {
+      const val = document.getElementById('dayModalReviewsSlider').value;
+      document.getElementById('dayModalReviewsInput').value = val;
+      document.getElementById('dayModalReviewsBadge').textContent = `${val} шт`;
+      recalcDayModalEarnings();
+    }
+
+    function syncDayModalReviewsFromInput() {
+      const val = Math.min(100, Math.max(0, parseInt(document.getElementById('dayModalReviewsInput').value, 10) || 0));
+      document.getElementById('dayModalReviewsSlider').value = val;
+      document.getElementById('dayModalReviewsBadge').textContent = `${val} шт`;
+      recalcDayModalEarnings();
+    }
+
+    function recalcDayModalEarnings() {
+      const extra = Math.max(0, parseFloat(document.getElementById('dayModalExtraInput').value) || 0);
+      document.getElementById('dayModalExtraBadge').textContent = `+${formatMoney(extra)}`;
+
+      if (!modalWorkdayState) {
+        document.getElementById('dayModalTotalResult').textContent = '0 ₽';
+        return;
+      }
+
+      const tempConf = {
+        isWorkday: true,
+        role: modalRoleState,
+        hours: parseFloat(document.getElementById('dayModalHoursInput').value) || 8,
+        guests: parseInt(document.getElementById('dayModalGuestsSlider').value, 10) || 0,
+        planCompleted: document.getElementById('dayModalPlanCheckbox').checked,
+        reviews: parseInt(document.getElementById('dayModalReviewsInput').value, 10) || 0,
+        isWeekend: document.getElementById('dayModalWeekendCheckbox').checked,
+        extraIncome: extra
+      };
+
+      const earnings = computeDayEarnings(tempConf);
+      document.getElementById('dayModalTotalResult').textContent = formatMoney(earnings);
+    }
+
+    function saveDayModalChanges() {
+      const dayNum = parseInt(document.getElementById('dayModalDayNum').value, 10);
+      if (!dayNum) return;
+
+      const extra = Math.max(0, parseFloat(document.getElementById('dayModalExtraInput').value) || 0);
+      const extraComment = (document.getElementById('dayModalExtraComment').value || '').trim();
+
+      plannerState.daysConfig[dayNum] = {
+        isWorkday: modalWorkdayState,
+        role: modalRoleState,
+        hours: parseFloat(document.getElementById('dayModalHoursInput').value) || 8,
+        guests: parseInt(document.getElementById('dayModalGuestsSlider').value, 10) || 0,
+        planCompleted: document.getElementById('dayModalPlanCheckbox').checked,
+        reviews: parseInt(document.getElementById('dayModalReviewsInput').value, 10) || 0,
+        isWeekend: document.getElementById('dayModalWeekendCheckbox').checked,
+        extraIncome: extra,
+        extraComment: extraComment
+      };
+
+      triggerHaptic('success');
+      closeDayModal();
+      calculatePlan();
+      showToast(`Настройки дня ${dayNum} сохранены!`, 'success');
+    }
+
+    function copySettingsToAllDays() {
+      const currentConf = {
+        isWorkday: true,
+        role: modalRoleState,
+        hours: parseFloat(document.getElementById('dayModalHoursInput').value) || 8,
+        guests: parseInt(document.getElementById('dayModalGuestsSlider').value, 10) || 0,
+        planCompleted: document.getElementById('dayModalPlanCheckbox').checked,
+        reviews: parseInt(document.getElementById('dayModalReviewsInput').value, 10) || 0,
+        isWeekend: document.getElementById('dayModalWeekendCheckbox').checked,
+        extraIncome: Math.max(0, parseFloat(document.getElementById('dayModalExtraInput').value) || 0),
+        extraComment: (document.getElementById('dayModalExtraComment').value || '').trim()
+      };
+
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        if (plannerState.daysConfig[d] && plannerState.daysConfig[d].isWorkday) {
+          plannerState.daysConfig[d] = { ...currentConf };
+        }
+      }
+
+      triggerHaptic('medium');
+      closeDayModal();
+      calculatePlan();
+      showToast('Настройки применены ко всем активным счетам!', 'info');
+    }
+
+    function applyTemplateToAllWorkdays() {
+      triggerHaptic('light');
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        if (plannerState.daysConfig[d] && plannerState.daysConfig[d].isWorkday) {
+          plannerState.daysConfig[d].role = plannerState.templateRole;
+          plannerState.daysConfig[d].hours = plannerState.templateHours;
+          plannerState.daysConfig[d].guests = plannerState.templateGuests;
+          plannerState.daysConfig[d].planCompleted = plannerState.templateAssumeBonus;
+          plannerState.daysConfig[d].reviews = plannerState.templateReviews;
+        }
+      }
+      calculatePlan();
+      showToast('Базовые параметры обновлены для всех рабочих дней', 'success');
+    }
+
+    /* =========================================================================
+       SCHEDULE GENERATORS
+       ========================================================================= */
+    function autoDistributePlanShifts() {
+      triggerHaptic('medium');
+      const target = plannerState.targetMoney;
+      const hours = plannerState.templateHours;
+      let estPerShift = 1;
+
+      if (plannerState.templateRole === 'promoter') {
+        const guests = plannerState.templateGuests;
+        const hoursPay = hours * 360;
+        let guestsPay = guests <= 20 ? (guests * 100) : (2000 + (guests - 20) * 150);
+        const subtotal = hoursPay + guestsPay;
+        estPerShift = plannerState.templateAssumeBonus ? Math.round(subtotal * 1.3) : subtotal;
+      } else {
+        estPerShift = (hours * 385) + (plannerState.templateReviews * 100);
+      }
+
+      const needed = Math.min(plannerState.daysCount, Math.ceil(target / (estPerShift || 1)));
+
+      // Reset
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        plannerState.daysConfig[d] = createDefaultDayConfig(d);
+      }
+
+      // Even distribution
+      const step = plannerState.daysCount / needed;
+      for (let i = 0; i < needed; i++) {
+        const day = Math.min(plannerState.daysCount, Math.max(1, Math.round(1 + i * step)));
+        plannerState.daysConfig[day].isWorkday = true;
+      }
+
+      calculatePlan();
+      showToast(`Оптимальный график составлен: ${needed} смен`, 'success');
+    }
+
+    function generateSchedulePattern(pattern) {
+      triggerHaptic('light');
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        if (!plannerState.daysConfig[d]) plannerState.daysConfig[d] = createDefaultDayConfig(d);
+        
+        if (pattern === '2-2') {
+          // 2 work, 2 rest
+          const cycle = (d - 1) % 4;
+          plannerState.daysConfig[d].isWorkday = (cycle === 0 || cycle === 1);
+        } else if (pattern === '5-2') {
+          // 5 work weekdays, 2 rest weekends
+          const isWeekend = (d % 7 === 6 || d % 7 === 0);
+          plannerState.daysConfig[d].isWorkday = !isWeekend;
+        }
+      }
+      calculatePlan();
+      showToast(`Сформирован график ${pattern === '2-2' ? '2 через 2' : '5/2'}`, 'info');
+    }
+
+    function clearPlanSchedule() {
+      triggerHaptic('warning');
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        plannerState.daysConfig[d] = createDefaultDayConfig(d);
+      }
+      calculatePlan();
+      showToast('График смен очищен', 'info');
+    }
+
+    function copyScheduleText() {
+      const workdays = [];
+      for (let d = 1; d <= plannerState.daysCount; d++) {
+        if (plannerState.daysConfig[d] && plannerState.daysConfig[d].isWorkday) {
+          workdays.push(d);
+        }
+      }
+
+      if (workdays.length === 0) {
+        showToast('В графике нет рабочих смен', 'warning');
+        return;
+      }
+
+      const text = `🎯 Мой индивидуальный график в Futurione (${plannerState.daysCount} дней)\n` +
+                   `💰 Целевой доход: ${formatMoney(plannerState.targetMoney)}\n` +
+                   `📅 Всего смен: ${workdays.length} из ${plannerState.daysCount} дней\n` +
+                   `🗓 Рабочие дни: ${workdays.join(', ')}\n` +
+                   `💵 Запланировано заработать: ${document.getElementById('planScheduledMoneySum').textContent}\n` +
+                   `⏱ Всего часов: ${document.getElementById('planTotalHoursStat').textContent}`;
+
+      copyToClipboard(text);
+      triggerHaptic('success');
+      showToast('График скопирован для Telegram!', 'success');
+    }
+
+    /* =========================================================================
+       TEAM & COLLEAGUES
+       ========================================================================= */
+    function populateColleagueDropdowns() {
+      const globalSelect = document.getElementById('globalColleagueSelect');
+      const shiftSelect = document.getElementById('shiftColleague');
+      const filterSelect = document.getElementById('filterColleague');
+
+      globalSelect.innerHTML = colleagues.map(c => 
+        `<option value="${c.id}" ${c.id === activeColleagueId ? 'selected' : ''}>👤 ${escapeHtml(c.name)}</option>`
+      ).join('');
+
+      shiftSelect.innerHTML = colleagues.map(c => 
+        `<option value="${c.id}" ${c.id === activeColleagueId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+      ).join('');
+
+      filterSelect.innerHTML = `<option value="all">Все сотрудники (${colleagues.length})</option>` +
+        colleagues.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    function handleGlobalColleagueChange(colleagueId) {
+      triggerHaptic('selection');
+      activeColleagueId = colleagueId;
+      localStorage.setItem(STORAGE_KEY_ACTIVE, colleagueId);
+      document.getElementById('shiftColleague').value = colleagueId;
+      
+      const col = colleagues.find(c => c.id === colleagueId);
+      if (col && col.defaultRole) setRole(col.defaultRole);
+      showToast(`Выбран профиль: ${col ? col.name : ''}`, 'info');
+    }
+
+    function handleFormColleagueChange(colleagueId) {
+      activeColleagueId = colleagueId;
+      document.getElementById('globalColleagueSelect').value = colleagueId;
+      localStorage.setItem(STORAGE_KEY_ACTIVE, colleagueId);
+    }
+
+    function renderColleagues() {
+      const grid = document.getElementById('colleaguesGrid');
+      grid.innerHTML = colleagues.map(c => {
+        const colShifts = shifts.filter(s => s.colleagueId === c.id);
+        const totalMoney = colShifts.reduce((acc, s) => acc + (s.total || 0), 0);
+        const totalHours = colShifts.reduce((acc, s) => acc + (s.hours || 0), 0);
+        const totalExtra = colShifts.reduce((acc, s) => acc + (s.extraIncome || 0), 0);
+        const isCurrent = (c.id === activeColleagueId);
+
+        return `
+          <div class="bg-futu-card p-5 rounded-3xl border ${isCurrent ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : 'border-futu-border'} space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center font-display font-bold text-white text-base">
+                  ${c.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 class="font-display font-bold text-base text-slate-100">${escapeHtml(c.name)}</h4>
+                  <span class="text-xs text-slate-400 capitalize">${c.defaultRole === 'promoter' ? 'Промоутер' : 'Медиатор'}</span>
+                </div>
+              </div>
+
+              ${c.id !== 'me' ? `
+                <button type="button" onclick="deleteColleague('${c.id}')" title="Удалить профиль" class="text-slate-500 hover:text-rose-400 transition p-1">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              ` : '<span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-800">Вы</span>'}
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-futu-border text-xs">
+              <div class="bg-futu-surface p-2.5 rounded-xl">
+                <span class="text-slate-500 block">Заработано:</span>
+                <span class="font-bold text-emerald-400 text-sm">${formatMoney(totalMoney)}</span>
+              </div>
+              <div class="bg-futu-surface p-2.5 rounded-xl">
+                <span class="text-slate-500 block">Смен / Часов:</span>
+                <span class="font-bold text-slate-200 text-sm">${colShifts.length} / ${totalHours}ч</span>
+              </div>
+            </div>
+
+            ${totalExtra > 0 ? `
+              <div class="text-[11px] text-indigo-300 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-900/60 text-center">
+                🎁 Доп. доходы сотрудника: <strong>+${formatMoney(totalExtra)}</strong>
+              </div>
+            ` : ''}
+
+            <button type="button" onclick="handleGlobalColleagueChange('${c.id}')" class="w-full py-2 rounded-xl text-xs font-semibold ${isCurrent ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} transition">
+              ${isCurrent ? '✓ Активный профиль' : 'Выбрать активным'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAddColleagueModal() {
+      triggerHaptic('light');
+      document.getElementById('newColleagueName').value = '';
+      document.getElementById('addColleagueModal').classList.remove('hidden');
+    }
+
+    function closeAddColleagueModal() {
+      document.getElementById('addColleagueModal').classList.add('hidden');
+    }
+
+    function saveNewColleague() {
+      const name = (document.getElementById('newColleagueName').value || '').trim();
+      const role = document.getElementById('newColleagueRole').value;
+
+      if (!name) {
+        showToast('Введите имя коллеги', 'warning');
+        return;
+      }
+
+      const newC = {
+        id: 'col_' + Date.now(),
+        name: name,
+        defaultRole: role
+      };
+
+      colleagues.push(newC);
+      saveColleaguesToStorage();
+      populateColleagueDropdowns();
+      renderColleagues();
+      closeAddColleagueModal();
+      triggerHaptic('success');
+      showToast(`Коллега ${name} добавлен!`, 'success');
+    }
+
+    function deleteColleague(colleagueId) {
+      showConfirmModal(
+        'Удалить профиль?',
+        'Смены сотрудника сохранятся в журнале, но профиль будет удален из списка быстрого выбора.',
+        () => {
+          colleagues = colleagues.filter(c => c.id !== colleagueId);
+          if (activeColleagueId === colleagueId) activeColleagueId = 'me';
+          saveColleaguesToStorage();
+          populateColleagueDropdowns();
+          renderColleagues();
+          showToast('Профиль удален', 'info');
+        }
+      );
+    }
+
+    /* =========================================================================
+       MONTH FILTER & HEADER SUMMARIES
+       ========================================================================= */
+    function populateMonthFilter() {
+      const select = document.getElementById('filterMonth');
+      const now = new Date();
+      const monthsRu = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+      let optionsHtml = '';
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const key = `${yyyy}-${mm}`;
+        const label = `${monthsRu[d.getMonth()]} ${yyyy}`;
+        optionsHtml += `<option value="${key}">${label}</option>`;
+      }
+      optionsHtml += `<option value="all">Все время (Вся история)</option>`;
+
+      select.innerHTML = optionsHtml;
+    }
+
+    function updateHeaderSummary() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      const todayShifts = shifts.filter(s => s.date === todayStr);
+      const todaySum = todayShifts.reduce((acc, s) => acc + (s.total || 0), 0);
+
+      const thisMonthShifts = shifts.filter(s => s.date.startsWith(currentMonthKey));
+      const monthSum = thisMonthShifts.reduce((acc, s) => acc + (s.total || 0), 0);
+
+      const todayBadge = document.getElementById('headerTodaySum');
+      const monthBadge = document.getElementById('headerMonthSum');
+      if (todayBadge) todayBadge.textContent = formatMoney(todaySum);
+      if (monthBadge) monthBadge.textContent = formatMoney(monthSum);
+
+      updateJournalCount();
+    }
+
+    function updateJournalCount() {
+      const badge = document.getElementById('journalCountBadge');
+      if (badge) badge.textContent = shifts.length;
+    }
+
+    /* =========================================================================
+       EXPORTS: TELEGRAM, CSV, JSON
+       ========================================================================= */
+    function copyCurrentShiftReport() {
+      if (!currentCalcResult) recalcShift();
+
+      const dateStr = document.getElementById('shiftDate').value;
+      const colleagueId = document.getElementById('shiftColleague').value;
+      const colleague = colleagues.find(c => c.id === colleagueId) || { name: 'Сотрудник' };
+      const comment = document.getElementById('shiftComment').value;
+      const r = currentCalcResult;
+
+      let text = `⚡ Отчет по смене | Futurione\n`;
+      text += `👤 Сотрудник: ${colleague.name}\n`;
+      text += `📅 Дата: ${formatRussianDate(dateStr)}\n`;
+      text += `💼 Роль: ${r.role === 'promoter' ? 'Промоутер' : 'Медиатор'}\n`;
+      text += `⏱ Часы: ${r.hours} ч (${r.hourlyRate} ₽/ч = ${formatMoney(r.hoursPay)})\n`;
+
+      if (r.role === 'promoter') {
+        text += `👥 Приведено гостей: ${r.guests} чел (${formatMoney(r.guestsPay)})\n`;
+        if (r.guests > 20) {
+          text += `   ↳ 20 чел по 100 ₽ + ${r.guests - 20} чел по 150 ₽\n`;
+        }
+        if (r.isPlanCompleted) {
+          text += `🎯 План по людям: ВЫПОЛНЕН! (Бонус ×1.3: +${formatMoney(r.planBonus)})\n`;
+        }
+      } else {
+        text += `⭐ Отзывы гостей: ${r.reviews} шт (${formatMoney(r.reviewsPay)})\n`;
+        text += `🏷 Тариф: ${r.isWeekend ? 'Выходной день (403 ₽/ч)' : 'Будний день (377 ₽/ч)'}\n`;
+      }
+
+      if (r.extraIncome > 0) {
+        text += `🎁 Дополнительный доход: +${formatMoney(r.extraIncome)}${r.extraComment ? ' (' + r.extraComment + ')' : ''}\n`;
+      }
+
+      if (comment) text += `💬 Заметка: ${comment}\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `💰 ИТОГО НАЧИСЛЕНО: ${formatMoney(r.total)}`;
+
+      copyToClipboard(text);
+      triggerHaptic('success');
+      showToast('Отчет скопирован для Telegram!', 'success');
+    }
+
+    function copySingleShiftReport(shiftId) {
+      const s = shifts.find(item => item.id === shiftId);
+      if (!s) return;
+
+      let text = `⚡ Смена | Futurione\n`;
+      text += `👤 ${s.colleagueName || 'Сотрудник'} | 📅 ${formatRussianDate(s.date)}\n`;
+      text += `💼 ${s.role === 'promoter' ? 'Промоутер' : 'Медиатор'}: ${s.hours} ч\n`;
+      if (s.role === 'promoter') {
+        text += `👥 Гости: ${s.guests} чел ${s.isPlanCompleted ? '(План ×1.3)' : ''}\n`;
+      } else {
+        text += `⭐ Отзывы: ${s.reviews} шт\n`;
+      }
+      if (s.extraIncome > 0) {
+        text += `🎁 Доп. доход: +${formatMoney(s.extraIncome)}${s.extraComment ? ' (' + s.extraComment + ')' : ''}\n`;
+      }
+      if (s.comment) text += `💬 ${s.comment}\n`;
+      text += `💰 Итого: ${formatMoney(s.total)}`;
+
+      copyToClipboard(text);
+      triggerHaptic('success');
+      showToast('Смена скопирована!', 'success');
+    }
+
+    function copyMonthTelegramSummary() {
+      const monthFilter = document.getElementById('filterMonth').value;
+      const colleagueFilter = document.getElementById('filterColleague').value;
+
+      const filtered = shifts.filter(s => {
+        if (colleagueFilter !== 'all' && s.colleagueId !== colleagueFilter) return false;
+        if (monthFilter !== 'all' && !s.date.startsWith(monthFilter)) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        showToast('Нет смен для отчета за выбранный период', 'warning');
+        return;
+      }
+
+      const totalMoney = filtered.reduce((acc, s) => acc + (s.total || 0), 0);
+      const totalHours = filtered.reduce((acc, s) => acc + (s.hours || 0), 0);
+      const totalExtra = filtered.reduce((acc, s) => acc + (s.extraIncome || 0), 0);
+      const promoterShifts = filtered.filter(s => s.role === 'promoter');
+      const mediatorShifts = filtered.filter(s => s.role === 'mediator');
+
+      const colName = colleagueFilter === 'all' 
+        ? 'Вся команда' 
+        : (colleagues.find(c => c.id === colleagueFilter)?.name || 'Сотрудник');
+
+      let text = `📊 Сводный отчет по зарплате | Futurione\n`;
+      text += `👤 Сотрудник: ${colName}\n`;
+      text += `📅 Период: ${monthFilter === 'all' ? 'Вся история' : monthFilter}\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `• Отработано смен: ${filtered.length}\n`;
+      text += `• Всего часов: ${totalHours} ч\n`;
+      if (promoterShifts.length > 0) {
+        const totalGuests = promoterShifts.reduce((acc, s) => acc + (s.guests || 0), 0);
+        const plans = promoterShifts.filter(s => s.isPlanCompleted).length;
+        text += `• Промоутер: ${promoterShifts.length} смен, ${totalGuests} гостей (выполнено планов: ${plans})\n`;
+      }
+      if (mediatorShifts.length > 0) {
+        const totalReviews = mediatorShifts.reduce((acc, s) => acc + (s.reviews || 0), 0);
+        text += `• Медиатор: ${mediatorShifts.length} смен, ${totalReviews} отзывов\n`;
+      }
+      if (totalExtra > 0) {
+        text += `• Дополнительные доходы: ${formatMoney(totalExtra)}\n`;
+      }
+      text += `• Средняя ставка: ~${totalHours > 0 ? formatMoney(Math.round(totalMoney / totalHours)) : 0}/ч\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `💰 ИТОГО К ВЫПЛАТЕ: ${formatMoney(totalMoney)}`;
+
+      copyToClipboard(text);
+      triggerHaptic('success');
+      showToast('Сводный отчет скопирован в буфер!', 'success');
+    }
+
+    function exportDataCSV() {
+      if (shifts.length === 0) {
+        showToast('Нет данных для экспорта', 'warning');
+        return;
+      }
+
+      const headers = ['Дата', 'Сотрудник', 'Роль', 'Часы', 'Ставка_час', 'Гости_чел', 'Отзывы_шт', 'План_выполнен', 'Бонус_плана', 'Доп_доход', 'Доп_коммент', 'Итого_руб', 'Заметка'];
+      const rows = shifts.map(s => [
+        s.date,
+        `"${(s.colleagueName || '').replace(/"/g, '""')}"`,
+        s.role === 'promoter' ? 'Промоутер' : 'Медиатор',
+        s.hours,
+        s.hourlyRate,
+        s.guests || 0,
+        s.reviews || 0,
+        s.isPlanCompleted ? 'ДА' : 'НЕТ',
+        s.planBonus || 0,
+        s.extraIncome || 0,
+        `"${(s.extraComment || '').replace(/"/g, '""')}"`,
+        s.total,
+        `"${(s.comment || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(e => e.join(';'))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `futurione_shifts_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('Таблица CSV скачана', 'success');
+    }
+
+    function exportDataJSON() {
+      const exportObject = {
+        organization: 'Futurione',
+        exportedAt: new Date().toISOString(),
+        colleagues: colleagues,
+        shifts: shifts,
+        planner: plannerState
+      };
+
+      const jsonStr = JSON.stringify(exportObject, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `futurione_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('Резервная копия JSON скачана', 'success');
+    }
+
+    function importDataJSON(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data && Array.isArray(data.shifts)) {
+            shifts = data.shifts;
+            if (Array.isArray(data.colleagues)) colleagues = data.colleagues;
+            if (data.planner) plannerState = data.planner;
+
+            saveShiftsToStorage();
+            saveColleaguesToStorage();
+            savePlannerToStorage();
+
+            populateColleagueDropdowns();
+            renderJournal();
+            renderColleagues();
+            initPlannerDefaults();
+            updateHeaderSummary();
+
+            triggerHaptic('success');
+            showToast(`Импортировано смен: ${shifts.length}`, 'success');
+          } else {
+            showToast('Неверная структура файла бэкапа', 'warning');
+          }
+        } catch (err) {
+          showToast('Ошибка при чтении JSON файла', 'warning');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    /* =========================================================================
+       HELPERS & UI UTILITIES
+       ========================================================================= */
+    function formatMoney(amount) {
+      return (Number(amount) || 0).toLocaleString('ru-RU') + ' ₽';
+    }
+
+    function formatRussianDate(dateStr) {
+      if (!dateStr) return '';
+      const [yyyy, mm, dd] = dateStr.split('-');
+      const d = new Date(dateStr + 'T12:00:00');
+      const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      const days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+      return `${parseInt(dd, 10)} ${months[d.getMonth()]}, ${days[d.getDay()]}`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function copyToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch (err) {
+        console.error('Copy error', err);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function showToast(message, type = 'info') {
+      if (type === 'success') triggerHaptic('success');
+      else if (type === 'warning') triggerHaptic('warning');
+      else triggerHaptic('light');
+
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      const bgColors = {
+        success: 'bg-emerald-950 border-emerald-500 text-emerald-200',
+        warning: 'bg-amber-950 border-amber-500 text-amber-200',
+        info: 'bg-cyan-950 border-cyan-500 text-cyan-200'
+      };
+
+      const icons = {
+        success: '✓',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs sm:text-sm font-semibold shadow-2xl transition-all duration-300 transform translate-y-3 opacity-0 ${bgColors[type] || bgColors.info}`;
+      toast.innerHTML = `<span>${icons[type] || '•'}</span><span>${escapeHtml(message)}</span>`;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-3', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function showConfirmModal(title, message, onConfirm) {
+      // Native Telegram confirm if inside Telegram Web App
+      if (tg?.showConfirm) {
+        triggerHaptic('warning');
+        tg.showConfirm(`${title}\n${message}`, (confirmed) => {
+          if (confirmed && typeof onConfirm === 'function') {
+            triggerHaptic('medium');
+            onConfirm();
+          }
+        });
+        return;
+      }
+
+      // Fallback modal for browser
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+
+      const okBtn = document.getElementById('confirmOkBtn');
+      const cancelBtn = document.getElementById('confirmCancelBtn');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+      };
+
+      okBtn.onclick = () => {
+        cleanup();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+
+      cancelBtn.onclick = cleanup;
+      modal.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
